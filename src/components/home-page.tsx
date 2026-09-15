@@ -9,7 +9,7 @@ async function ListaDeTestes() {
 
   if (testes.length === 0) {
     return (
-      <p className="text-sm text-black/50 dark:text-white/50">
+      <p className="text-sm text-black/50">
         Nenhum nome ainda.
       </p>
     );
@@ -40,7 +40,7 @@ export async function HomePage() {
         />
         <h1 className="text-5xl font-bold tracking-tight">Booclubs</h1>
       </div>
-      <p className="text-sm text-black/50 dark:text-white/50">
+      <p className="text-sm text-black/50">
         frontend connected · backend: {health.status}
       </p>
       <form action={adicionarTeste} className="flex items-center gap-2">
@@ -48,18 +48,18 @@ export async function HomePage() {
           name="nome"
           required
           placeholder="Digite um nome"
-          className="rounded-md border border-black/20 px-3 py-2 text-sm dark:border-white/20"
+          className="rounded-md border border-black/20 px-3 py-2 text-sm"
         />
         <button
           type="submit"
-          className="rounded-md bg-black px-3 py-2 text-sm text-white dark:bg-white dark:text-black"
+          className="rounded-md bg-black px-3 py-2 text-sm text-white"
         >
           Adicionar
         </button>
       </form>
       <Suspense
         fallback={
-          <p className="text-sm text-black/50 dark:text-white/50">
+          <p className="text-sm text-black/50">
             Carregando...
           </p>
         }
