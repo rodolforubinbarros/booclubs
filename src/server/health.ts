@@ -7,7 +7,7 @@ export type HealthStatus = {
 export function getHealthStatus(): HealthStatus {
   return {
     status: "ok",
-    service: "booclubs-api",
+    service: "booClubs-api",
     timestamp: new Date().toISOString(),
   };
 }

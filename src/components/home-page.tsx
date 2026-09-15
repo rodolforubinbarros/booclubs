@@ -32,13 +32,13 @@ export async function HomePage() {
       <div className="flex flex-col items-center gap-2">
         <Image
           src="/booclubs_logo.png"
-          alt="Booclubs"
+          alt="BooClubs"
           width={1377}
           height={1438}
           className="h-24 w-auto"
           priority
         />
-        <h1 className="text-5xl font-bold tracking-tight">Booclubs</h1>
+        <h1 className="text-5xl font-bold tracking-tight">BooClubs</h1>
       </div>
       <p className="text-sm text-black/50">
         frontend connected · backend: {health.status}
