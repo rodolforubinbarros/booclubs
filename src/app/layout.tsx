@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "booclubs",
+  title: "Booclubs",
   description: "Plataforma de clubes de leitura",
 };
 

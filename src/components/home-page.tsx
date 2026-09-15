@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Suspense } from "react";
 import { adicionarTeste } from "@/server/actions";
 import { listarTestes } from "@/server/db";
@@ -28,7 +29,17 @@ export async function HomePage() {
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-6 text-center">
-      <h1 className="text-5xl font-bold tracking-tight">booclubs</h1>
+      <div className="flex flex-col items-center gap-2">
+        <Image
+          src="/booclubs_logo.png"
+          alt="Booclubs"
+          width={1377}
+          height={1438}
+          className="h-24 w-auto"
+          priority
+        />
+        <h1 className="text-5xl font-bold tracking-tight">Booclubs</h1>
+      </div>
       <p className="text-sm text-black/50 dark:text-white/50">
         frontend connected · backend: {health.status}
       </p>
