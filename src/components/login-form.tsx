@@ -31,7 +31,13 @@ export function LoginForm() {
     });
 
     if (error) {
-      setError("E-mail ou senha inválidos.");
+      if (error.status === 401) {
+        setError("E-mail ou senha inválidos.");
+      } else {
+        setError(
+          `Erro ao entrar (${error.status ?? "?"}): ${error.message ?? error.code ?? "erro interno"}`,
+        );
+      }
       setPending(false);
       return;
     }

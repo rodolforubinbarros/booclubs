@@ -47,7 +47,9 @@ export function CadastroForm() {
       if (error.status === 422) {
         setError("Este e-mail já está cadastrado.");
       } else {
-        setError("Não foi possível criar a conta. Tente novamente.");
+        setError(
+          `Erro ao criar conta (${error.status ?? "?"}): ${error.message ?? error.code ?? "erro interno"}`,
+        );
       }
       setPending(false);
       return;
