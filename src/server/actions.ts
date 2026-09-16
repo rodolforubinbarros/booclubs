@@ -5,6 +5,7 @@ import {
   criarTeste,
   listarClubes,
   listarClubesDoUsuario,
+  listarMembrosDoClube,
   listarUsuarios,
   type ClubeLeitura,
   type ClubeDoUsuario,
@@ -76,4 +77,17 @@ export async function obterClubesDoUsuario(
       papel: clube.papel,
     }),
   );
+}
+
+export type MembroDoClubeDto = {
+  id: string;
+  nome: string;
+  email: string;
+  papel: string;
+};
+
+export async function obterMembrosDoClube(
+  clubeId: string,
+): Promise<MembroDoClubeDto[]> {
+  return listarMembrosDoClube(clubeId);
 }

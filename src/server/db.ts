@@ -132,3 +132,20 @@ export async function listarClubesDoUsuario(userId: string): Promise<ClubeDoUsua
     ORDER BY c.nome ASC
   `;
 }
+
+export type MembroDoClube = {
+  id: string;
+  nome: string;
+  email: string;
+  papel: string;
+};
+
+export async function listarMembrosDoClube(clubeId: string): Promise<MembroDoClube[]> {
+  return sql<MembroDoClube[]>`
+    SELECT u.id, u.name AS nome, u.email, m.papel
+    FROM clube_membros m
+    JOIN "user" u ON u.id = m.user_id
+    WHERE m.clube_id = ${clubeId}
+    ORDER BY u.name ASC
+  `;
+}
