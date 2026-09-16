@@ -1,24 +1,293 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { signOut, useSession } from "@/lib/auth-client";
 import { UserStatus } from "@/components/user-status";
+import {
+  obterClubes,
+  obterClubesDoUsuario,
+  obterUsuarios,
+  type ClubeDoUsuarioDto,
+  type ClubeLeituraDto,
+  type UsuarioDto,
+} from "@/server/actions";
 
-type MenuKey = "perfil" | "clubes" | "sobre";
+type MenuKey = "home" | "perfil" | "clubes" | "sobre";
 
 const MENU_ITEMS: { key: MenuKey; label: string }[] = [
+  { key: "home", label: "Home" },
   { key: "perfil", label: "Meu Perfil" },
   { key: "clubes", label: "Clubes de Leitura" },
   { key: "sobre", label: "Sobre o BooClubs" },
 ];
 
-function ConteudoClubes() {
+const formatoData = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});
+
+function formatarData(iso: string | null | undefined) {
+  if (!iso) return "—";
+  return formatoData.format(new Date(iso));
+}
+
+function rotuloLink(url: string) {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "");
+    if (host.includes("instagram")) return "Instagram";
+    return host;
+  } catch {
+    return url;
+  }
+}
+
+function ConteudoHome() {
+  const [usuarios, setUsuarios] = useState<UsuarioDto[] | null>(null);
+
+  useEffect(() => {
+    let ativo = true;
+    obterUsuarios()
+      .then((resultado) => {
+        if (ativo) setUsuarios(resultado);
+      })
+      .catch(() => {
+        if (ativo) setUsuarios([]);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
   return (
-    <div className="flex flex-col gap-1">
-      <h2 className="text-2xl font-bold tracking-tight">Clubes de Leitura</h2>
-      <p className="text-sm text-black/60">Conteúdo em breve.</p>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-2xl font-bold tracking-tight">Home</h2>
+        <p className="text-sm text-black/60">
+          Usuários cadastrados no BooClubs.
+        </p>
+      </div>
+
+      {usuarios === null ? (
+        <p className="text-sm text-black/50">Carregando usuários...</p>
+      ) : usuarios.length === 0 ? (
+        <p className="text-sm text-black/50">Nenhum usuário cadastrado.</p>
+      ) : (
+        <ul className="divide-y divide-black/10 rounded-lg border border-black/10">
+          {usuarios.map((usuario) => (
+            <li
+              key={usuario.id}
+              className="flex items-center justify-between gap-4 px-4 py-3"
+            >
+              <div className="flex min-w-0 flex-col">
+                <span className="font-medium text-black">{usuario.name}</span>
+                <span className="truncate text-sm text-black/60">
+                  {usuario.email}
+                </span>
+              </div>
+              <span className="shrink-0 text-sm text-black/40">
+                Desde {formatarData(usuario.createdAt)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function ConteudoPerfil() {
+  const { data, isPending } = useSession();
+  const user = data?.user;
+  const userId = user?.id;
+  const [clubes, setClubes] = useState<ClubeDoUsuarioDto[]>([]);
+  const [carregandoClubes, setCarregandoClubes] = useState(true);
+
+  useEffect(() => {
+    if (!userId) return;
+    let ativo = true;
+    obterClubesDoUsuario(userId)
+      .then((resultado) => {
+        if (ativo) {
+          setClubes(resultado);
+          setCarregandoClubes(false);
+        }
+      })
+      .catch(() => {
+        if (ativo) {
+          setClubes([]);
+          setCarregandoClubes(false);
+        }
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [userId]);
+
+  if (isPending) {
+    return (
+      <div className="flex flex-col gap-4">
+        <h2 className="text-2xl font-bold tracking-tight">Meu Perfil</h2>
+        <p className="text-sm text-black/50">Carregando sessao...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex flex-col gap-4">
+        <h2 className="text-2xl font-bold tracking-tight">Meu Perfil</h2>
+        <p className="text-sm text-black/50">
+          Faca login para ver seu perfil.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <h2 className="text-2xl font-bold tracking-tight">Meu Perfil</h2>
+
+      <div className="flex flex-col gap-0.5 rounded-lg border border-black/10 px-4 py-3">
+        <span className="text-lg font-semibold text-black">{user.name}</span>
+        <span className="text-sm text-black/60">{user.email}</span>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <h3 className="text-lg font-semibold text-black">
+          Clubes de leitura que participo
+        </h3>
+
+        {carregandoClubes ? (
+          <p className="text-sm text-black/50">Carregando clubes...</p>
+        ) : clubes.length === 0 ? (
+          <p className="text-sm text-black/50">
+            Voce ainda nao participa de nenhum clube.
+          </p>
+        ) : (
+          <ul className="divide-y divide-black/10 rounded-lg border border-black/10">
+            {clubes.map((clube) => (
+              <li key={clube.id} className="flex flex-col gap-0.5 px-4 py-3">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="font-medium text-black">{clube.nome}</span>
+                  <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                    {clube.papel}
+                  </span>
+                </div>
+                <p className="text-sm text-black/60">
+                  {clube.genero ?? "Sem genero"} ·{" "}
+                  {clube.local ?? "Local a combinar"} · {clube.membros}{" "}
+                  membro(s)
+                </p>
+                {clube.link && (
+                  <a
+                    href={clube.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-medium text-blue-600 hover:underline"
+                  >
+                    {rotuloLink(clube.link)}
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ConteudoClubes() {
+  const [busca, setBusca] = useState("");
+  const [buscaDiferida, setBuscaDiferida] = useState("");
+  const [clubes, setClubes] = useState<ClubeLeituraDto[] | null>(null);
+
+  useEffect(() => {
+    const temporizador = setTimeout(() => setBuscaDiferida(busca), 400);
+    return () => clearTimeout(temporizador);
+  }, [busca]);
+
+  useEffect(() => {
+    let ativo = true;
+    obterClubes(buscaDiferida)
+      .then((resultado) => {
+        if (ativo) setClubes(resultado);
+      })
+      .catch(() => {
+        if (ativo) setClubes([]);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [buscaDiferida]);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-2xl font-bold tracking-tight">Clubes de Leitura</h2>
+        <p className="text-sm text-black/60">
+          Todos os clubes cadastrados. Busque por nome, gênero, local,
+          descrição ou dono do clube.
+        </p>
+      </div>
+
+      <input
+        type="search"
+        value={busca}
+        onChange={(event) => setBusca(event.target.value)}
+        placeholder="Buscar clubes..."
+        className="w-full max-w-md rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+      />
+
+      {clubes === null ? (
+        <p className="text-sm text-black/50">Carregando clubes...</p>
+      ) : clubes.length === 0 ? (
+        <p className="text-sm text-black/50">
+          Nenhum clube encontrado para &quot;{buscaDiferida}&quot;.
+        </p>
+      ) : (
+        <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {clubes.map((clube) => (
+            <li
+              key={clube.id}
+              className="flex flex-col gap-1 rounded-lg border border-black/10 px-4 py-3"
+            >
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-lg font-semibold text-black">
+                  {clube.nome}
+                </span>
+                <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                  {clube.membros} membro(s)
+                </span>
+              </div>
+              <p className="text-sm text-black/70">
+                {clube.descricao || "Sem descrição."}
+              </p>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-black/60">
+                <span>{clube.genero ?? "Sem gênero"}</span>
+                <span>Local: {clube.local ?? "a combinar"}</span>
+                <span>Dono: {clube.dono_nome ?? "—"}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <a
+                  href={clube.link ?? undefined}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-medium text-blue-600 hover:underline"
+                >
+                  {clube.link ? rotuloLink(clube.link) : "Sem link externo"}
+                </a>
+                <span className="text-xs text-black/40">
+                  Criado em {formatarData(clube.criadoEm)}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -32,23 +301,8 @@ function ConteudoSobre() {
   );
 }
 
-function ConteudoPerfil(): ReactNode {
-  const { data } = useSession();
-  const user = data?.user;
-
-  return (
-    <div className="flex flex-col gap-1">
-      <h2 className="text-2xl font-bold tracking-tight">Meu Perfil</h2>
-      {user && (
-        <p className="text-sm text-black/60">
-          {user.name} · {user.email}
-        </p>
-      )}
-    </div>
-  );
-}
-
 const CONTEUDO: Record<MenuKey, ReactNode> = {
+  home: <ConteudoHome />,
   perfil: <ConteudoPerfil />,
   clubes: <ConteudoClubes />,
   sobre: <ConteudoSobre />,
@@ -142,7 +396,7 @@ function Sidebar({
 }
 
 export function Dashboard() {
-  const [active, setActive] = useState<MenuKey>("perfil");
+  const [active, setActive] = useState<MenuKey>("home");
   const [menuOpen, setMenuOpen] = useState(false);
 
   function select(key: MenuKey) {
