@@ -23,7 +23,6 @@ export async function criarTeste(chave: string, nome: string) {
 export type Usuario = {
   id: string;
   name: string;
-  email: string;
   emailVerified: boolean;
   image: string | null;
   createdAt: Date;
@@ -46,19 +45,26 @@ export type ClubeDoUsuario = ClubeLeitura & {
   papel: string;
 };
 
+export type ClubeVisivel = ClubeLeitura & {
+  sou_membro: boolean;
+};
+
 export async function listarUsuarios(): Promise<Usuario[]> {
   return sql<Usuario[]>`
-    SELECT id, name, email, "emailVerified", image, "createdAt"
+    SELECT id, name, "emailVerified", image, "createdAt"
     FROM "user"
     ORDER BY "createdAt" ASC
   `;
 }
 
-export async function listarClubes(busca = ""): Promise<ClubeLeitura[]> {
+export async function listarClubes(
+  busca = "",
+  userId: string | null = null,
+): Promise<ClubeVisivel[]> {
   const termo = `%${busca.trim()}%`;
 
   if (!busca.trim()) {
-    return sql<ClubeLeitura[]>`
+    return sql<ClubeVisivel[]>`
       SELECT
         c.id,
         c.nome,
@@ -73,14 +79,19 @@ export async function listarClubes(busca = ""): Promise<ClubeLeitura[]> {
           SELECT count(*)::int
           FROM clube_membros m
           WHERE m.clube_id = c.id
-        ) AS membros
+        ) AS membros,
+        EXISTS(
+          SELECT 1
+          FROM clube_membros m
+          WHERE m.clube_id = c.id AND m.user_id = ${userId}
+        ) AS sou_membro
       FROM clubes c
       LEFT JOIN "user" u ON u.id = c.dono_id
       ORDER BY c.nome ASC
     `;
   }
 
-  return sql<ClubeLeitura[]>`
+  return sql<ClubeVisivel[]>`
     SELECT
       c.id,
       c.nome,
@@ -95,7 +106,12 @@ export async function listarClubes(busca = ""): Promise<ClubeLeitura[]> {
         SELECT count(*)::int
         FROM clube_membros m
         WHERE m.clube_id = c.id
-      ) AS membros
+      ) AS membros,
+      EXISTS(
+        SELECT 1
+        FROM clube_membros m
+        WHERE m.clube_id = c.id AND m.user_id = ${userId}
+      ) AS sou_membro
     FROM clubes c
     LEFT JOIN "user" u ON u.id = c.dono_id
     WHERE c.nome ILIKE ${termo}
@@ -136,16 +152,71 @@ export async function listarClubesDoUsuario(userId: string): Promise<ClubeDoUsua
 export type MembroDoClube = {
   id: string;
   nome: string;
-  email: string;
   papel: string;
 };
 
 export async function listarMembrosDoClube(clubeId: string): Promise<MembroDoClube[]> {
   return sql<MembroDoClube[]>`
-    SELECT u.id, u.name AS nome, u.email, m.papel
+    SELECT u.id, u.name AS nome, m.papel
     FROM clube_membros m
     JOIN "user" u ON u.id = m.user_id
     WHERE m.clube_id = ${clubeId}
     ORDER BY u.name ASC
   `;
+}
+
+export async function criarClubeNoBanco(dados: {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  genero: string | null;
+  local: string | null;
+  link: string | null;
+  donoId: string;
+}) {
+  return sql`
+    INSERT INTO clubes (id, nome, descricao, genero, local, link, dono_id, criado_em)
+    VALUES (${dados.id}, ${dados.nome}, ${dados.descricao}, ${dados.genero}, ${dados.local}, ${dados.link}, ${dados.donoId}, ${new Date()})
+  `;
+}
+
+export async function adicionarMembro(
+  clubeId: string,
+  userId: string,
+  papel: string,
+) {
+  return sql`
+    INSERT INTO clube_membros (clube_id, user_id, papel)
+    VALUES (${clubeId}, ${userId}, ${papel})
+    ON CONFLICT ("clube_id", "user_id") DO NOTHING
+  `;
+}
+
+export async function removerMembro(clubeId: string, userId: string) {
+  return sql`DELETE FROM clube_membros WHERE clube_id = ${clubeId} AND user_id = ${userId}`;
+}
+
+export async function transferirDono(clubeId: string) {
+  const [proximo] = await sql<{ user_id: string }[]>`
+    SELECT m.user_id
+    FROM clube_membros m
+    WHERE m.clube_id = ${clubeId}
+    ORDER BY (m.papel = 'dono') DESC, m.user_id ASC
+    LIMIT 1
+  `;
+  return sql`
+    UPDATE clubes SET dono_id = ${proximo?.user_id ?? null}
+    WHERE id = ${clubeId}
+  `;
+}
+
+export async function obterPapel(
+  clubeId: string,
+  userId: string,
+): Promise<string | null> {
+  const [linha] = await sql<{ papel: string }[]>`
+    SELECT papel FROM clube_membros
+    WHERE clube_id = ${clubeId} AND user_id = ${userId}
+  `;
+  return linha?.papel ?? null;
 }

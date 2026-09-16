@@ -1,27 +1,37 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { signOut, useSession } from "@/lib/auth-client";
 import { UserStatus } from "@/components/user-status";
 import {
+  criarClube,
+  entrarNoClube,
   obterClubes,
   obterClubesDoUsuario,
   obterMembrosDoClube,
   obterUsuarios,
+  sairDoClube,
   type ClubeDoUsuarioDto,
-  type ClubeLeituraDto,
+  type ClubeVisivelDto,
   type MembroDoClubeDto,
   type UsuarioDto,
 } from "@/server/actions";
 
-type MenuKey = "home" | "perfil" | "clubes" | "sobre";
+type MenuKey = "home" | "perfil" | "clubes" | "cadastrar" | "sobre";
 
-const MENU_ITEMS: { key: MenuKey; label: string }[] = [
+const MENU_PRINCIPAL: { key: MenuKey; label: string }[] = [
   { key: "home", label: "Home" },
   { key: "perfil", label: "Meu Perfil" },
   { key: "clubes", label: "Clubes de Leitura" },
+];
+
+const MENU_CADASTRO: { key: MenuKey; label: string }[] = [
+  { key: "cadastrar", label: "Cadastrar Clube de Leitura" },
+];
+
+const MENU_INSTITUCIONAL: { key: MenuKey; label: string }[] = [
   { key: "sobre", label: "Sobre o BooClubs" },
 ];
 
@@ -85,9 +95,6 @@ function ConteudoHome() {
             >
               <div className="flex min-w-0 flex-col">
                 <span className="font-medium text-black">{usuario.name}</span>
-                <span className="truncate text-sm text-black/60">
-                  {usuario.email}
-                </span>
               </div>
               <span className="shrink-0 text-sm text-black/40">
                 Desde {formatarData(usuario.createdAt)}
@@ -106,6 +113,7 @@ function ConteudoPerfil() {
   const userId = user?.id;
   const [clubes, setClubes] = useState<ClubeDoUsuarioDto[]>([]);
   const [carregandoClubes, setCarregandoClubes] = useState(true);
+  const [saindoId, setSaindoId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!userId) return;
@@ -127,6 +135,16 @@ function ConteudoPerfil() {
       ativo = false;
     };
   }, [userId]);
+
+  async function sair(id: string) {
+    setSaindoId(id);
+    try {
+      const resultado = await sairDoClube(id);
+      if (resultado.ok) setClubes((prev) => prev.filter((c) => c.id !== id));
+    } finally {
+      setSaindoId(null);
+    }
+  }
 
   if (isPending) {
     return (
@@ -174,9 +192,36 @@ function ConteudoPerfil() {
               <li key={clube.id} className="flex flex-col gap-0.5 px-4 py-3">
                 <div className="flex items-center justify-between gap-4">
                   <span className="font-medium text-black">{clube.nome}</span>
-                  <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-                    {clube.papel}
-                  </span>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                      {clube.papel}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={saindoId === clube.id}
+                      onClick={() => sair(clube.id)}
+                      title="Sair do clube"
+                      aria-label={`Sair do clube ${clube.nome}`}
+                      className="flex h-6 w-6 items-center justify-center rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                    >
+                      {saindoId === clube.id ? (
+                        <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      ) : (
+                        <svg
+                          viewBox="0 0 24 24"
+                          className="h-3.5 w-3.5"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14" />
+                          <path d="M10 11v6M14 11v6" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
                 <p className="text-sm text-black/60">
                   {clube.genero ?? "Sem genero"} ·{" "}
@@ -205,11 +250,14 @@ function ConteudoPerfil() {
 function ConteudoClubes() {
   const [busca, setBusca] = useState("");
   const [buscaDiferida, setBuscaDiferida] = useState("");
-  const [clubes, setClubes] = useState<ClubeLeituraDto[] | null>(null);
-  const [clubeAberto, setClubeAberto] = useState<ClubeLeituraDto | null>(null);
+  const [clubes, setClubes] = useState<ClubeVisivelDto[] | null>(null);
+  const [clubeAberto, setClubeAberto] = useState<ClubeVisivelDto | null>(null);
   const [membros, setMembros] = useState<MembroDoClubeDto[]>([]);
   const [carregandoMembros, setCarregandoMembros] = useState(false);
   const [erroMembros, setErroMembros] = useState(false);
+  const [atualizacao, setAtualizacao] = useState(0);
+  const [entrandoId, setEntrandoId] = useState<string | null>(null);
+  const [erroEntrada, setErroEntrada] = useState(false);
 
   useEffect(() => {
     const temporizador = setTimeout(() => setBuscaDiferida(busca), 400);
@@ -228,9 +276,33 @@ function ConteudoClubes() {
     return () => {
       ativo = false;
     };
-  }, [buscaDiferida]);
+  }, [buscaDiferida, atualizacao]);
 
-  async function abrirMembros(clube: ClubeLeituraDto) {
+  async function entrar(clube: ClubeVisivelDto) {
+    setEntrandoId(clube.id);
+    setErroEntrada(false);
+    try {
+      const resultado = await entrarNoClube(clube.id);
+      if (resultado.ok) {
+        setClubes((prev) =>
+          prev
+            ? prev.map((c) =>
+                c.id === clube.id ? { ...c, sou_membro: true, membros: c.membros + 1 } : c,
+              )
+            : prev,
+        );
+      } else {
+        setErroEntrada(true);
+      }
+    } catch {
+      setErroEntrada(true);
+    } finally {
+      setEntrandoId(null);
+      setAtualizacao((v) => v + 1);
+    }
+  }
+
+  async function abrirMembros(clube: ClubeVisivelDto) {
     setClubeAberto(clube);
     setMembros([]);
     setErroMembros(false);
@@ -267,6 +339,12 @@ function ConteudoClubes() {
         className="w-full max-w-md rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
       />
 
+      {erroEntrada && (
+        <p className="text-sm text-red-600">
+          Não foi possível participar deste clube. Tente novamente.
+        </p>
+      )}
+
       {clubes === null ? (
         <p className="text-sm text-black/50">Carregando clubes...</p>
       ) : clubes.length === 0 ? (
@@ -284,14 +362,47 @@ function ConteudoClubes() {
                 <span className="text-lg font-semibold text-black">
                   {clube.nome}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => abrirMembros(clube)}
-                  title="Ver membros do clube"
-                  className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
-                >
-                  {clube.membros} membro(s)
-                </button>
+                <div className="flex shrink-0 items-center gap-2">
+                  {clube.sou_membro ? (
+                    <span
+                      title="Você participa deste clube"
+                      className="rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700"
+                    >
+                      Você participa
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={entrandoId === clube.id}
+                      onClick={() => entrar(clube)}
+                      title="Participar deste clube"
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-blue-200 text-lg font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                    >
+                      {entrandoId === clube.id ? (
+                        <span className="h-3 w-3 animate-spin rounded-full border-2 border-blue-700 border-t-transparent" />
+                      ) : (
+                        <svg
+                          viewBox="0 0 24 24"
+                          className="h-4 w-4"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={2.5}
+                          strokeLinecap="round"
+                        >
+                          <path d="M12 5v14M5 12h14" />
+                        </svg>
+                      )}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => abrirMembros(clube)}
+                    title="Ver membros do clube"
+                    className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                  >
+                    {clube.membros} membro(s)
+                  </button>
+                </div>
               </div>
               <p className="text-sm text-black/70">
                 {clube.descricao || "Sem descrição."}
@@ -381,9 +492,6 @@ function ConteudoClubes() {
                         <span className="font-medium text-black">
                           {membro.nome}
                         </span>
-                        <span className="truncate text-sm text-black/60">
-                          {membro.email}
-                        </span>
                       </div>
                       <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
                         {membro.papel}
@@ -409,10 +517,135 @@ function ConteudoSobre() {
   );
 }
 
+function ConteudoCadastro() {
+  const [estado, setEstado] = useState<
+    "idle" | "enviando" | "feito" | "erro"
+  >("idle");
+  const [erro, setErro] = useState("");
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setEstado("enviando");
+    setErro("");
+    try {
+      const resultado = await criarClube(new FormData(event.currentTarget));
+      if (resultado?.erro) {
+        setErro(resultado.erro);
+        setEstado("erro");
+      } else {
+        setEstado("feito");
+        event.currentTarget.reset();
+      }
+    } catch {
+      setErro("Erro inesperado ao criar o clube. Tente novamente.");
+      setEstado("erro");
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-2xl font-bold tracking-tight">
+          Cadastrar Clube de Leitura
+        </h2>
+        <p className="text-sm text-black/60">
+          Crie um novo clube para começar a reunir leitores. Você será o dono
+          dele.
+        </p>
+      </div>
+
+      <form
+        onSubmit={handleSubmit}
+        className="flex max-w-lg flex-col gap-4 rounded-lg border border-black/10 bg-white p-4"
+      >
+        <div className="flex flex-col gap-1">
+          <label htmlFor="nome" className="text-sm font-medium text-black">
+            Nome *
+          </label>
+          <input
+            id="nome"
+            name="nome"
+            type="text"
+            required
+            placeholder="Ex.: Livro, Prosa & Cia"
+            className="rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+          />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label htmlFor="descricao" className="text-sm font-medium text-black">
+            Descrição
+          </label>
+          <textarea
+            id="descricao"
+            name="descricao"
+            rows={3}
+            placeholder="Como e quando o clube se encontra?"
+            className="rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+          />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label htmlFor="genero" className="text-sm font-medium text-black">
+            Gênero / tema
+          </label>
+          <input
+            id="genero"
+            name="genero"
+            type="text"
+            placeholder="Ex.: Romance, ficção científica..."
+            className="rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+          />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label htmlFor="local" className="text-sm font-medium text-black">
+            Local
+          </label>
+          <input
+            id="local"
+            name="local"
+            type="text"
+            placeholder="Ex.: A definir, biblioteca pública..."
+            className="rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+          />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label htmlFor="link" className="text-sm font-medium text-black">
+            Link externo
+          </label>
+          <input
+            id="link"
+            name="link"
+            type="url"
+            placeholder="https://..."
+            className="rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+          />
+        </div>
+
+        {estado === "feito" && (
+          <p className="text-sm text-green-700">Clube criado com sucesso!</p>
+        )}
+        {estado === "erro" && <p className="text-sm text-red-600">{erro}</p>}
+
+        <button
+          type="submit"
+          disabled={estado === "enviando"}
+          className="w-fit rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+        >
+          {estado === "enviando" ? "Criando..." : "Criar clube"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 const CONTEUDO: Record<MenuKey, ReactNode> = {
   home: <ConteudoHome />,
   perfil: <ConteudoPerfil />,
   clubes: <ConteudoClubes />,
+  cadastrar: <ConteudoCadastro />,
   sobre: <ConteudoSobre />,
 };
 
@@ -448,8 +681,6 @@ function Sidebar({
   onSelect: (key: MenuKey) => void;
 }) {
   const router = useRouter();
-  const menuTop = MENU_ITEMS.filter((item) => item.key !== "sobre");
-  const menuBottom = MENU_ITEMS.filter((item) => item.key === "sobre");
 
   return (
     <>
@@ -466,8 +697,9 @@ function Sidebar({
           BooClubs
         </span>
       </div>
+
       <nav className="flex flex-1 flex-col gap-1">
-        {menuTop.map((item) => (
+        {MENU_PRINCIPAL.map((item) => (
           <MenuButton
             key={item.key}
             item={item}
@@ -476,8 +708,9 @@ function Sidebar({
           />
         ))}
       </nav>
-      <nav className="flex flex-col gap-1">
-        {menuBottom.map((item) => (
+
+      <nav className="mt-4 flex flex-col gap-1 border-t border-black/10 pt-4">
+        {MENU_CADASTRO.map((item) => (
           <MenuButton
             key={item.key}
             item={item}
@@ -487,6 +720,19 @@ function Sidebar({
           />
         ))}
       </nav>
+
+      <nav className="flex flex-col gap-1">
+        {MENU_INSTITUCIONAL.map((item) => (
+          <MenuButton
+            key={item.key}
+            item={item}
+            active={active === item.key}
+            onClick={() => onSelect(item.key)}
+            center
+          />
+        ))}
+      </nav>
+
       <nav className="mt-4 flex justify-center border-t border-black/10 pt-4">
         <button
           type="button"

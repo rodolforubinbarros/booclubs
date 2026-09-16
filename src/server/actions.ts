@@ -1,14 +1,23 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 import {
+  adicionarMembro,
+  criarClubeNoBanco,
   criarTeste,
   listarClubes,
   listarClubesDoUsuario,
   listarMembrosDoClube,
   listarUsuarios,
-  type ClubeLeitura,
+  obterPapel,
+  removerMembro,
+  transferirDono,
   type ClubeDoUsuario,
+  type ClubeLeitura,
+  type ClubeVisivel,
   type Usuario,
 } from "./db";
 
@@ -22,7 +31,6 @@ export async function adicionarTeste(formData: FormData) {
 export type UsuarioDto = {
   id: string;
   name: string;
-  email: string;
   emailVerified: boolean;
   image: string | null;
   createdAt: string;
@@ -45,6 +53,14 @@ export type ClubeDoUsuarioDto = ClubeLeituraDto & {
   papel: string;
 };
 
+export type ClubeVisivelDto = ClubeLeituraDto & {
+  sou_membro: boolean;
+};
+
+async function obterSessao() {
+  return auth.api.getSession({ headers: await headers() });
+}
+
 function serializarUsuario(usuario: Usuario): UsuarioDto {
   return {
     ...usuario,
@@ -64,8 +80,13 @@ export async function obterUsuarios(): Promise<UsuarioDto[]> {
   return (await listarUsuarios()).map(serializarUsuario);
 }
 
-export async function obterClubes(busca: string): Promise<ClubeLeituraDto[]> {
-  return (await listarClubes(busca)).map(serializarClube);
+export async function obterClubes(busca: string): Promise<ClubeVisivelDto[]> {
+  const sessao = await obterSessao();
+  const userId = sessao?.user?.id ?? null;
+  return (await listarClubes(busca, userId)).map((clube: ClubeVisivel) => ({
+    ...serializarClube(clube),
+    sou_membro: clube.sou_membro,
+  }));
 }
 
 export async function obterClubesDoUsuario(
@@ -82,7 +103,6 @@ export async function obterClubesDoUsuario(
 export type MembroDoClubeDto = {
   id: string;
   nome: string;
-  email: string;
   papel: string;
 };
 
@@ -90,4 +110,48 @@ export async function obterMembrosDoClube(
   clubeId: string,
 ): Promise<MembroDoClubeDto[]> {
   return listarMembrosDoClube(clubeId);
+}
+
+export async function criarClube(
+  formData: FormData,
+): Promise<{ ok?: boolean; erro?: string }> {
+  const sessao = await obterSessao();
+  const userId = sessao?.user?.id;
+  if (!userId) return { erro: "Faça login para criar um clube." };
+
+  const nome = String(formData.get("nome") ?? "").trim();
+  if (!nome) return { erro: "Informe o nome do clube." };
+  const descricao = String(formData.get("descricao") ?? "").trim() || null;
+  const genero = String(formData.get("genero") ?? "").trim() || null;
+  const local = String(formData.get("local") ?? "").trim() || null;
+  const link = String(formData.get("link") ?? "").trim() || null;
+
+  const id = randomUUID();
+  await criarClubeNoBanco({ id, nome, descricao, genero, local, link, donoId: userId });
+  await adicionarMembro(id, userId, "dono");
+  revalidatePath("/");
+  return { ok: true };
+}
+
+export async function entrarNoClube(clubeId: string): Promise<{ ok: boolean }> {
+  const sessao = await obterSessao();
+  const userId = sessao?.user?.id;
+  if (!userId) return { ok: false };
+  await adicionarMembro(clubeId, userId, "membro");
+  revalidatePath("/");
+  return { ok: true };
+}
+
+export async function sairDoClube(clubeId: string): Promise<{ ok: boolean }> {
+  const sessao = await obterSessao();
+  const userId = sessao?.user?.id;
+  if (!userId) return { ok: false };
+  const papel = await obterPapel(clubeId, userId);
+  if (!papel) return { ok: false };
+  await removerMembro(clubeId, userId);
+  if (papel === "dono") {
+    await transferirDono(clubeId);
+  }
+  revalidatePath("/");
+  return { ok: true };
 }
