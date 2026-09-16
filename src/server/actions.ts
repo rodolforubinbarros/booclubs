@@ -1,11 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import {
   adicionarMembro,
-  criarClubeNoBanco,
+  criarClubeComDono,
   criarTeste,
   listarClubes,
   listarClubesDoUsuario,
@@ -24,7 +23,6 @@ export async function adicionarTeste(formData: FormData) {
   const nome = String(formData.get("nome") ?? "").trim();
   if (!nome) return;
   await criarTeste(crypto.randomUUID(), nome);
-  revalidatePath("/");
 }
 
 export type UsuarioDto = {
@@ -127,7 +125,7 @@ export async function criarClube(
     const link = String(formData.get("link") ?? "").trim() || null;
 
     const id = crypto.randomUUID();
-    await criarClubeNoBanco({
+    await criarClubeComDono({
       id,
       nome,
       descricao,
@@ -136,12 +134,6 @@ export async function criarClube(
       link,
       donoId: userId,
     });
-    await adicionarMembro(id, userId, "dono");
-    try {
-      revalidatePath("/");
-    } catch (erroRevalidacao) {
-      console.error("[criarClube] revalidatePath", erroRevalidacao);
-    }
     return { ok: true };
   } catch (erro) {
     console.error("[criarClube]", erro);
@@ -155,11 +147,6 @@ export async function entrarNoClube(clubeId: string): Promise<{ ok: boolean }> {
     const userId = sessao?.user?.id;
     if (!userId) return { ok: false };
     await adicionarMembro(clubeId, userId, "membro");
-    try {
-      revalidatePath("/");
-    } catch (erroRevalidacao) {
-      console.error("[entrarNoClube] revalidatePath", erroRevalidacao);
-    }
     return { ok: true };
   } catch (erro) {
     console.error("[entrarNoClube]", erro);
@@ -177,11 +164,6 @@ export async function sairDoClube(clubeId: string): Promise<{ ok: boolean }> {
     await removerMembro(clubeId, userId);
     if (papel === "dono") {
       await transferirDono(clubeId);
-    }
-    try {
-      revalidatePath("/");
-    } catch (erroRevalidacao) {
-      console.error("[sairDoClube] revalidatePath", erroRevalidacao);
     }
     return { ok: true };
   } catch (erro) {

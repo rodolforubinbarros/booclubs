@@ -165,7 +165,7 @@ export async function listarMembrosDoClube(clubeId: string): Promise<MembroDoClu
   `;
 }
 
-export async function criarClubeNoBanco(dados: {
+export async function criarClubeComDono(dados: {
   id: string;
   nome: string;
   descricao: string | null;
@@ -174,10 +174,17 @@ export async function criarClubeNoBanco(dados: {
   link: string | null;
   donoId: string;
 }) {
-  return sql`
-    INSERT INTO clubes (id, nome, descricao, genero, local, link, dono_id, criado_em)
-    VALUES (${dados.id}, ${dados.nome}, ${dados.descricao}, ${dados.genero}, ${dados.local}, ${dados.link}, ${dados.donoId}, ${new Date()})
-  `;
+  return sql.begin(async (tx) => {
+    await tx`
+      INSERT INTO clubes (id, nome, descricao, genero, local, link, dono_id, criado_em)
+      VALUES (${dados.id}, ${dados.nome}, ${dados.descricao}, ${dados.genero}, ${dados.local}, ${dados.link}, ${dados.donoId}, ${new Date()})
+    `;
+    await tx`
+      INSERT INTO clube_membros (clube_id, user_id, papel)
+      VALUES (${dados.id}, ${dados.donoId}, 'dono')
+      ON CONFLICT ("clube_id", "user_id") DO NOTHING
+    `;
+  });
 }
 
 export async function adicionarMembro(
