@@ -1,6 +1,5 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
@@ -115,43 +114,78 @@ export async function obterMembrosDoClube(
 export async function criarClube(
   formData: FormData,
 ): Promise<{ ok?: boolean; erro?: string }> {
-  const sessao = await obterSessao();
-  const userId = sessao?.user?.id;
-  if (!userId) return { erro: "Faça login para criar um clube." };
+  try {
+    const sessao = await obterSessao();
+    const userId = sessao?.user?.id;
+    if (!userId) return { erro: "Faça login para criar um clube." };
 
-  const nome = String(formData.get("nome") ?? "").trim();
-  if (!nome) return { erro: "Informe o nome do clube." };
-  const descricao = String(formData.get("descricao") ?? "").trim() || null;
-  const genero = String(formData.get("genero") ?? "").trim() || null;
-  const local = String(formData.get("local") ?? "").trim() || null;
-  const link = String(formData.get("link") ?? "").trim() || null;
+    const nome = String(formData.get("nome") ?? "").trim();
+    if (!nome) return { erro: "Informe o nome do clube." };
+    const descricao = String(formData.get("descricao") ?? "").trim() || null;
+    const genero = String(formData.get("genero") ?? "").trim() || null;
+    const local = String(formData.get("local") ?? "").trim() || null;
+    const link = String(formData.get("link") ?? "").trim() || null;
 
-  const id = randomUUID();
-  await criarClubeNoBanco({ id, nome, descricao, genero, local, link, donoId: userId });
-  await adicionarMembro(id, userId, "dono");
-  revalidatePath("/");
-  return { ok: true };
+    const id = crypto.randomUUID();
+    await criarClubeNoBanco({
+      id,
+      nome,
+      descricao,
+      genero,
+      local,
+      link,
+      donoId: userId,
+    });
+    await adicionarMembro(id, userId, "dono");
+    try {
+      revalidatePath("/");
+    } catch (erroRevalidacao) {
+      console.error("[criarClube] revalidatePath", erroRevalidacao);
+    }
+    return { ok: true };
+  } catch (erro) {
+    console.error("[criarClube]", erro);
+    return { erro: "Erro inesperado ao criar o clube. Tente novamente." };
+  }
 }
 
 export async function entrarNoClube(clubeId: string): Promise<{ ok: boolean }> {
-  const sessao = await obterSessao();
-  const userId = sessao?.user?.id;
-  if (!userId) return { ok: false };
-  await adicionarMembro(clubeId, userId, "membro");
-  revalidatePath("/");
-  return { ok: true };
+  try {
+    const sessao = await obterSessao();
+    const userId = sessao?.user?.id;
+    if (!userId) return { ok: false };
+    await adicionarMembro(clubeId, userId, "membro");
+    try {
+      revalidatePath("/");
+    } catch (erroRevalidacao) {
+      console.error("[entrarNoClube] revalidatePath", erroRevalidacao);
+    }
+    return { ok: true };
+  } catch (erro) {
+    console.error("[entrarNoClube]", erro);
+    return { ok: false };
+  }
 }
 
 export async function sairDoClube(clubeId: string): Promise<{ ok: boolean }> {
-  const sessao = await obterSessao();
-  const userId = sessao?.user?.id;
-  if (!userId) return { ok: false };
-  const papel = await obterPapel(clubeId, userId);
-  if (!papel) return { ok: false };
-  await removerMembro(clubeId, userId);
-  if (papel === "dono") {
-    await transferirDono(clubeId);
+  try {
+    const sessao = await obterSessao();
+    const userId = sessao?.user?.id;
+    if (!userId) return { ok: false };
+    const papel = await obterPapel(clubeId, userId);
+    if (!papel) return { ok: false };
+    await removerMembro(clubeId, userId);
+    if (papel === "dono") {
+      await transferirDono(clubeId);
+    }
+    try {
+      revalidatePath("/");
+    } catch (erroRevalidacao) {
+      console.error("[sairDoClube] revalidatePath", erroRevalidacao);
+    }
+    return { ok: true };
+  } catch (erro) {
+    console.error("[sairDoClube]", erro);
+    return { ok: false };
   }
-  revalidatePath("/");
-  return { ok: true };
 }
