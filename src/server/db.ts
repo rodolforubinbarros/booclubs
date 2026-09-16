@@ -8,7 +8,7 @@ if (!connectionString) {
   );
 }
 
-const sql = postgres(connectionString, { max: 1 });
+export const sql = postgres(connectionString, { max: 1 });
 
 export type Teste = { id: number; chave: string; nome: string };
 
