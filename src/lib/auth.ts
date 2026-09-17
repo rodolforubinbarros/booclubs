@@ -12,5 +12,13 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
+  user: {
+    additionalFields: {
+      bio: { type: "string", required: false },
+      temaFavorito: { type: "string", required: false },
+      autorFavorito: { type: "string", required: false },
+      livroIndicado: { type: "string", required: false },
+    },
+  },
   plugins: [nextCookies()],
 });

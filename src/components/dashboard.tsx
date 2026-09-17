@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { signOut, useSession } from "@/lib/auth-client";
+import { authClient, signOut, useSession } from "@/lib/auth-client";
 import { useAdministrador } from "@/lib/use-admin";
 import { UserStatus } from "@/components/user-status";
 import { ImagemClube, ImagemUsuario } from "@/components/imagens";
@@ -15,18 +15,20 @@ import {
   obterClubes,
   obterClubesDoUsuario,
   obterMembrosDoClube,
-  obterUsuarios,
   sairDoClube,
   type ClubeDoUsuarioDto,
   type ClubeVisivelDto,
   type MembroDoClubeDto,
-  type UsuarioDto,
 } from "@/server/actions";
 
-type MenuKey = "home" | "perfil" | "clubes" | "cadastrar" | "sobre";
+type MenuKey =
+  | "perfil"
+  | "clubes"
+  | "cadastrar"
+  | "sobre"
+  | "editar-perfil";
 
 const MENU_PRINCIPAL: { key: MenuKey; label: string }[] = [
-  { key: "home", label: "Home" },
   { key: "perfil", label: "Meu Perfil" },
   { key: "clubes", label: "Clubes de Leitura" },
 ];
@@ -60,63 +62,7 @@ function rotuloLink(url: string) {
   }
 }
 
-function ConteudoHome() {
-  const [usuarios, setUsuarios] = useState<UsuarioDto[] | null>(null);
-
-  useEffect(() => {
-    let ativo = true;
-    obterUsuarios()
-      .then((resultado) => {
-        if (ativo) setUsuarios(resultado);
-      })
-      .catch(() => {
-        if (ativo) setUsuarios([]);
-      });
-    return () => {
-      ativo = false;
-    };
-  }, []);
-
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-2xl font-bold tracking-tight">Home</h2>
-        <p className="text-sm text-black/60">
-          Usuários cadastrados no BooClubs.
-        </p>
-      </div>
-
-      {usuarios === null ? (
-        <p className="text-sm text-black/50">Carregando usuários...</p>
-      ) : usuarios.length === 0 ? (
-        <p className="text-sm text-black/50">Nenhum usuário cadastrado.</p>
-      ) : (
-        <ul className="divide-y divide-black/10 rounded-lg border border-black/10 bg-white">
-          {usuarios.map((usuario) => (
-            <li
-              key={usuario.id}
-              className="flex items-center justify-between gap-4 px-4 py-3"
-            >
-              <div className="flex min-w-0 items-center gap-3">
-                <ImagemUsuario
-                  src={usuario.image}
-                  alt={`Foto de ${usuario.name}`}
-                  className="h-8 w-8 shrink-0 rounded-full object-cover"
-                />
-                <span className="font-medium text-black">{usuario.name}</span>
-              </div>
-              <span className="shrink-0 text-sm text-black/40">
-                Desde {formatarData(usuario.createdAt)}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-function ConteudoPerfil() {
+function ConteudoPerfil({ onEditar }: { onEditar?: () => void }) {
   const { data, isPending } = useSession();
   const user = data?.user;
   const userId = user?.id;
@@ -187,7 +133,42 @@ function ConteudoPerfil() {
         />
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className="text-lg font-semibold text-black">{user.name}</span>
-          <span className="text-sm text-black/60">{user.email}</span>
+        </div>
+        {onEditar && (
+          <button
+            type="button"
+            onClick={onEditar}
+            className="ml-auto shrink-0 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+          >
+            Alterar dados do perfil
+          </button>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-lg border border-black/10 bg-white px-4 py-3">
+        <h3 className="text-lg font-semibold text-black">Sobre mim</h3>
+        <p className="text-sm text-black/60">
+          {user.bio?.trim() ? user.bio : "Voce ainda nao escreveu uma bio."}
+        </p>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs text-black/40">Tema favorito</span>
+            <span className="text-sm text-black">
+              {user.temaFavorito?.trim() || "—"}
+            </span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs text-black/40">Autor(a) favorito</span>
+            <span className="text-sm text-black">
+              {user.autorFavorito?.trim() || "—"}
+            </span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs text-black/40">Livro que indica</span>
+            <span className="text-sm text-black">
+              {user.livroIndicado?.trim() || "—"}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -612,6 +593,237 @@ function ConteudoClubes() {
   );
 }
 
+function ConteudoEditarPerfil({ onVoltar }: { onVoltar?: () => void }) {
+  const { data, isPending } = useSession();
+  const user = data?.user;
+  const [nome, setNome] = useState(user?.name ?? "");
+  const [bio, setBio] = useState(user?.bio ?? "");
+  const [temaFavorito, setTemaFavorito] = useState(user?.temaFavorito ?? "");
+  const [autorFavorito, setAutorFavorito] = useState(
+    user?.autorFavorito ?? "",
+  );
+  const [livroIndicado, setLivroIndicado] = useState(
+    user?.livroIndicado ?? "",
+  );
+  const [estado, setEstado] = useState<"idle" | "enviando" | "feito" | "erro">(
+    "idle",
+  );
+  const [erro, setErro] = useState("");
+  const [usuarioSincronizado, setUsuarioSincronizado] = useState(user);
+
+  if (user !== usuarioSincronizado) {
+    setUsuarioSincronizado(user);
+    setNome(user?.name ?? "");
+    setBio(user?.bio ?? "");
+    setTemaFavorito(user?.temaFavorito ?? "");
+    setAutorFavorito(user?.autorFavorito ?? "");
+    setLivroIndicado(user?.livroIndicado ?? "");
+  }
+
+  async function salvar(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const novoNome = nome.trim();
+    if (!novoNome) {
+      setErro("Informe um nome.");
+      setEstado("erro");
+      return;
+    }
+    setEstado("enviando");
+    setErro("");
+    try {
+      const { error } = await authClient.updateUser({
+        name: novoNome,
+        bio: bio.trim(),
+        temaFavorito: temaFavorito.trim(),
+        autorFavorito: autorFavorito.trim(),
+        livroIndicado: livroIndicado.trim(),
+      });
+      if (error) {
+        setErro(
+          `Erro ao salvar (${error.status ?? "?"}): ${error.message ?? error.code ?? "erro interno"}`,
+        );
+        setEstado("erro");
+        return;
+      }
+      setEstado("feito");
+      onVoltar?.();
+    } catch {
+      setErro("Erro inesperado ao atualizar o perfil. Tente novamente.");
+      setEstado("erro");
+    }
+  }
+
+  if (isPending) {
+    return (
+      <div className="flex flex-col gap-4">
+        <h2 className="text-2xl font-bold tracking-tight">
+          Alterar dados do perfil
+        </h2>
+        <p className="text-sm text-black/50">Carregando sessao...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex flex-col gap-4">
+        <h2 className="text-2xl font-bold tracking-tight">
+          Alterar dados do perfil
+        </h2>
+        <p className="text-sm text-black/50">
+          Faca login para alterar seu perfil.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <h2 className="text-2xl font-bold tracking-tight">
+        Alterar dados do perfil
+      </h2>
+
+      <div className="flex items-center gap-4 rounded-lg border border-black/10 bg-white px-4 py-3">
+        <ImagemUsuario
+          src={user.image}
+          alt={`Foto de ${user.name}`}
+          className="h-16 w-16 shrink-0 rounded-full object-cover"
+        />
+        <div className="flex flex-col gap-0.5">
+          <span className="text-sm font-medium text-black">Foto de perfil</span>
+          <span className="text-xs text-black/50">
+            A alteração da imagem será liberada em breve.
+          </span>
+        </div>
+      </div>
+
+      <form
+        onSubmit={salvar}
+        className="flex w-full max-w-lg flex-col gap-4 rounded-lg border border-black/10 bg-white p-4"
+      >
+        <div className="flex flex-col gap-1">
+          <label htmlFor="nome" className="text-sm font-medium text-black">
+            Nome *
+          </label>
+          <input
+            id="nome"
+            name="nome"
+            type="text"
+            required
+            value={nome}
+            onChange={(event) => setNome(event.target.value)}
+            className="rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+          />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label htmlFor="email" className="text-sm font-medium text-black">
+            E-mail
+          </label>
+          <input
+            id="email"
+            type="email"
+            value={user.email}
+            disabled
+            readOnly
+            className="rounded-md border border-black/15 bg-black/5 px-3 py-2 text-sm text-black/60 focus:outline-none"
+          />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label htmlFor="bio" className="text-sm font-medium text-black">
+            Bio
+          </label>
+          <textarea
+            id="bio"
+            name="bio"
+            rows={3}
+            value={bio}
+            onChange={(event) => setBio(event.target.value)}
+            placeholder="Conte um pouco sobre voce..."
+            className="rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+          />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="temaFavorito"
+            className="text-sm font-medium text-black"
+          >
+            Tema favorito
+          </label>
+          <input
+            id="temaFavorito"
+            name="temaFavorito"
+            type="text"
+            value={temaFavorito}
+            onChange={(event) => setTemaFavorito(event.target.value)}
+            className="rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+          />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="autorFavorito"
+            className="text-sm font-medium text-black"
+          >
+            Autor(a) favorito
+          </label>
+          <input
+            id="autorFavorito"
+            name="autorFavorito"
+            type="text"
+            value={autorFavorito}
+            onChange={(event) => setAutorFavorito(event.target.value)}
+            className="rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+          />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="livroIndicado"
+            className="text-sm font-medium text-black"
+          >
+            Livro que indica
+          </label>
+          <input
+            id="livroIndicado"
+            name="livroIndicado"
+            type="text"
+            value={livroIndicado}
+            onChange={(event) => setLivroIndicado(event.target.value)}
+            className="rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+          />
+        </div>
+
+        {estado === "feito" && (
+          <p className="text-sm text-green-700">Perfil atualizado com sucesso!</p>
+        )}
+        {estado === "erro" && <p className="text-sm text-red-600">{erro}</p>}
+
+        <div className="flex items-center gap-2">
+          <button
+            type="submit"
+            disabled={estado === "enviando"}
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {estado === "enviando" ? "Salvando..." : "Salvar alterações"}
+          </button>
+          {onVoltar && (
+            <button
+              type="button"
+              onClick={onVoltar}
+              className="rounded-md border border-black/15 px-4 py-2 text-sm font-medium text-black hover:bg-blue-50"
+            >
+              Voltar
+            </button>
+          )}
+        </div>
+      </form>
+    </div>
+  );
+}
+
 function ConteudoSobre() {
   return (
     <div className="flex flex-col gap-1">
@@ -757,8 +969,7 @@ function ConteudoCadastro({ onCriado }: { onCriado?: () => void }) {
   );
 }
 
-const CONTEUDO: Record<Exclude<MenuKey, "cadastrar">, ReactNode> = {
-  home: <ConteudoHome />,
+const CONTEUDO: Record<Exclude<MenuKey, "cadastrar" | "editar-perfil">, ReactNode> = {
   perfil: <ConteudoPerfil />,
   clubes: <ConteudoClubes />,
   sobre: <ConteudoSobre />,
@@ -874,7 +1085,7 @@ function Sidebar({
 }
 
 export function Dashboard() {
-  const [active, setActive] = useState<MenuKey>("home");
+  const [active, setActive] = useState<MenuKey>("perfil");
   const [menuOpen, setMenuOpen] = useState(false);
   const administrador = useAdministrador();
 
@@ -957,6 +1168,10 @@ export function Dashboard() {
         <div className="flex-1 overflow-y-auto p-4 sm:p-8">
           {active === "cadastrar" ? (
             <ConteudoCadastro onCriado={() => select("clubes")} />
+          ) : active === "editar-perfil" ? (
+            <ConteudoEditarPerfil onVoltar={() => select("perfil")} />
+          ) : active === "perfil" ? (
+            <ConteudoPerfil onEditar={() => select("editar-perfil")} />
           ) : (
             CONTEUDO[active]
           )}
