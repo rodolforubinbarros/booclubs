@@ -274,3 +274,68 @@ export async function obterPapel(
   `;
   return linha?.papel ?? null;
 }
+
+export async function adicionarAmizade(usuarioId: string, amigoId: string) {
+  const a = usuarioId < amigoId ? usuarioId : amigoId;
+  const b = usuarioId < amigoId ? amigoId : usuarioId;
+  return sql`
+    INSERT INTO amizades (usuario_id, amigo_id)
+    VALUES (${a}, ${b})
+    ON CONFLICT ("usuario_id", "amigo_id") DO NOTHING
+  `;
+}
+
+export async function removerAmizade(usuarioId: string, amigoId: string) {
+  return sql`
+    DELETE FROM amizades
+    WHERE (usuario_id = ${usuarioId} AND amigo_id = ${amigoId})
+       OR (usuario_id = ${amigoId} AND amigo_id = ${usuarioId})
+  `;
+}
+
+export async function saoAmigos(
+  usuarioId: string,
+  amigoId: string,
+): Promise<boolean> {
+  const [linha] = await sql<{ existe: boolean }[]>`
+    SELECT EXISTS(
+      SELECT 1 FROM amizades
+      WHERE (usuario_id = ${usuarioId} AND amigo_id = ${amigoId})
+         OR (usuario_id = ${amigoId} AND amigo_id = ${usuarioId})
+    ) AS existe
+  `;
+  return linha?.existe ?? false;
+}
+
+export type Amigo = {
+  id: string;
+  nome: string;
+  imagem: string | null;
+  bio: string | null;
+  temaFavorito: string | null;
+  autorFavorito: string | null;
+  livroIndicado: string | null;
+  criado_em: Date;
+};
+
+export async function listarAmigos(userId: string): Promise<Amigo[]> {
+  return sql<Amigo[]>`
+    SELECT
+      u.id,
+      u.name AS nome,
+      u.image AS imagem,
+      u.bio,
+      u."temaFavorito",
+      u."autorFavorito",
+      u."livroIndicado",
+      u."createdAt" AS criado_em
+    FROM amizades a
+    JOIN "user" u
+      ON u.id = CASE
+        WHEN a.usuario_id = ${userId} THEN a.amigo_id
+        ELSE a.usuario_id
+      END
+    WHERE a.usuario_id = ${userId} OR a.amigo_id = ${userId}
+    ORDER BY u.name ASC
+  `;
+}

@@ -4,18 +4,22 @@ import { headers } from "next/headers";
 import { EmailDeAdministrador } from "@/lib/admin";
 import { auth } from "@/lib/auth";
 import {
+  adicionarAmizade,
   adicionarMembro,
   criarClubeComDono,
   criarTeste,
   deletarClube,
+  listarAmigos,
   listarClubes,
   listarClubesDoUsuario,
   listarMembrosDoClube,
   listarUsuarios,
   listarUsuariosPorBusca,
   obterPapel,
+  removerAmizade,
   removerMembro,
   transferirDono,
+  type Amigo,
   type ClubeDoUsuario,
   type ClubeLeitura,
   type ClubeVisivel,
@@ -225,5 +229,65 @@ export async function sairDoClube(clubeId: string): Promise<{ ok: boolean }> {
   } catch (erro) {
     console.error("[sairDoClube]", erro);
     return { ok: false };
+  }
+}
+
+export type AmigoDto = {
+  id: string;
+  nome: string;
+  imagem: string | null;
+  bio: string | null;
+  temaFavorito: string | null;
+  autorFavorito: string | null;
+  livroIndicado: string | null;
+  criadoEm: string;
+};
+
+export async function obterAmigos(): Promise<AmigoDto[]> {
+  const sessao = await obterSessao();
+  const userId = sessao?.user?.id;
+  if (!userId) return [];
+  return (await listarAmigos(userId)).map((amigo: Amigo) => ({
+    id: amigo.id,
+    nome: amigo.nome,
+    imagem: amigo.imagem,
+    bio: amigo.bio,
+    temaFavorito: amigo.temaFavorito,
+    autorFavorito: amigo.autorFavorito,
+    livroIndicado: amigo.livroIndicado,
+    criadoEm: amigo.criado_em.toISOString(),
+  }));
+}
+
+export async function adicionarAmigo(
+  amigoId: string,
+): Promise<{ ok: boolean; erro?: string }> {
+  try {
+    const sessao = await obterSessao();
+    const userId = sessao?.user?.id;
+    if (!userId) return { ok: false, erro: "Faça login para adicionar amigos." };
+    if (userId === amigoId) {
+      return { ok: false, erro: "Você não pode adicionar a si mesmo." };
+    }
+    await adicionarAmizade(userId, amigoId);
+    return { ok: true };
+  } catch (erro) {
+    console.error("[adicionarAmigo]", erro);
+    return { ok: false, erro: "Erro inesperado ao adicionar o amigo." };
+  }
+}
+
+export async function desfazerAmizade(
+  amigoId: string,
+): Promise<{ ok: boolean; erro?: string }> {
+  try {
+    const sessao = await obterSessao();
+    const userId = sessao?.user?.id;
+    if (!userId) return { ok: false, erro: "Faça login para desfazer a amizade." };
+    await removerAmizade(userId, amigoId);
+    return { ok: true };
+  } catch (erro) {
+    console.error("[desfazerAmizade]", erro);
+    return { ok: false, erro: "Erro inesperado ao desfazer a amizade." };
   }
 }

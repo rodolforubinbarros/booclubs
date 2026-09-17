@@ -9,14 +9,18 @@ import { UserStatus } from "@/components/user-status";
 import { ImagemClube, ImagemUsuario } from "@/components/imagens";
 import { ChaveIcon } from "@/components/icones";
 import {
+  adicionarAmigo,
   criarClube,
+  desfazerAmizade,
   entrarNoClube,
   excluirClube,
+  obterAmigos,
   obterClubes,
   obterClubesDoUsuario,
   obterMembrosDoClube,
   obterUsuariosPorBusca,
   sairDoClube,
+  type AmigoDto,
   type ClubeDoUsuarioDto,
   type ClubeVisivelDto,
   type MembroDoClubeDto,
@@ -26,6 +30,7 @@ import {
 type MenuKey =
   | "perfil"
   | "fastasminhas"
+  | "patota"
   | "clubes"
   | "cadastrar"
   | "sobre"
@@ -34,6 +39,7 @@ type MenuKey =
 const MENU_PRINCIPAL: { key: MenuKey; label: string }[] = [
   { key: "perfil", label: "Meu Perfil" },
   { key: "fastasminhas", label: "Fastasminhas" },
+  { key: "patota", label: "Minha Patota" },
   { key: "clubes", label: "Clubes de Leitura" },
 ];
 
@@ -597,13 +603,104 @@ function ConteudoClubes() {
   );
 }
 
+function ModalPerfilUsuario({
+  usuario,
+  onFechar,
+  rodape,
+}: {
+  usuario: UsuarioPerfilDto;
+  onFechar: () => void;
+  rodape?: ReactNode;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Perfil de ${usuario.name}`}
+    >
+      <div className="absolute inset-0 bg-black/40" onClick={onFechar} />
+      <div className="relative flex max-h-full w-full max-w-md flex-col rounded-2xl bg-white p-6 shadow-xl">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <ImagemUsuario
+              src={usuario.image}
+              alt={`Foto de ${usuario.name}`}
+              className="h-16 w-16 shrink-0 rounded-full object-cover"
+            />
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <h3 className="text-lg font-semibold text-black">
+                {usuario.name}
+              </h3>
+              <span className="text-xs text-black/40">
+                Membro desde {formatarData(usuario.criadoEm)}
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onFechar}
+            aria-label="Fechar"
+            className="rounded-md p-2 text-black hover:bg-blue-50"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+            >
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-3 rounded-lg border border-black/10 px-4 py-3">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs text-black/40">Sobre mim</span>
+            <p className="text-sm text-black/60">
+              {usuario.bio?.trim() || "Sem bio."}
+            </p>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs text-black/40">Tema favorito</span>
+            <span className="text-sm text-black">
+              {usuario.temaFavorito?.trim() || "—"}
+            </span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs text-black/40">Autor(a) favorito</span>
+            <span className="text-sm text-black">
+              {usuario.autorFavorito?.trim() || "—"}
+            </span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs text-black/40">Livro que indica</span>
+            <span className="text-sm text-black">
+              {usuario.livroIndicado?.trim() || "—"}
+            </span>
+          </div>
+        </div>
+
+        {rodape && <div className="mt-4">{rodape}</div>}
+      </div>
+    </div>
+  );
+}
+
 function ConteudoFastasminhas() {
+  const { data: sessao } = useSession();
+  const sessaoUserId = sessao?.user?.id;
   const [busca, setBusca] = useState("");
   const [buscaDiferida, setBuscaDiferida] = useState("");
   const [usuarios, setUsuarios] = useState<UsuarioPerfilDto[] | null>(null);
   const [usuarioAberto, setUsuarioAberto] = useState<UsuarioPerfilDto | null>(
     null,
   );
+  const [adicionandoId, setAdicionandoId] = useState<string | null>(null);
+  const [erroAmizade, setErroAmizade] = useState(false);
+  const [idsAmigos, setIdsAmigos] = useState<Set<string> | null>(null);
 
   useEffect(() => {
     const temporizador = setTimeout(() => setBuscaDiferida(busca), 400);
@@ -624,6 +721,48 @@ function ConteudoFastasminhas() {
       ativo = false;
     };
   }, [buscaDiferida]);
+
+  useEffect(() => {
+    let ativo = true;
+    obterAmigos()
+      .then((resultado) => {
+        if (ativo) setIdsAmigos(new Set(resultado.map((amigo) => amigo.id)));
+      })
+      .catch(() => {
+        if (ativo) setIdsAmigos(new Set());
+      });
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
+  function abrirUsuario(usuario: UsuarioPerfilDto) {
+    setUsuarioAberto(usuario);
+    setErroAmizade(false);
+  }
+
+  function fecharUsuario() {
+    setUsuarioAberto(null);
+    setErroAmizade(false);
+  }
+
+  async function adicionar(id: string) {
+    if (!sessaoUserId || sessaoUserId === id) return;
+    setAdicionandoId(id);
+    setErroAmizade(false);
+    try {
+      const resultado = await adicionarAmigo(id);
+      if (resultado.ok) {
+        setIdsAmigos((prev) => new Set(prev ?? []).add(id));
+      } else {
+        setErroAmizade(true);
+      }
+    } catch {
+      setErroAmizade(true);
+    } finally {
+      setAdicionandoId(null);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -652,18 +791,73 @@ function ConteudoFastasminhas() {
       ) : (
         <ul className="divide-y divide-black/10 rounded-lg border border-black/10 bg-white">
           {usuarios.map((usuario) => (
-            <li key={usuario.id}>
+            <li
+              key={usuario.id}
+              className="flex items-center gap-2 px-4 py-3"
+            >
+              {sessaoUserId && sessaoUserId !== usuario.id ? (
+                <button
+                  type="button"
+                  disabled={adicionandoId === usuario.id}
+                  onClick={() => adicionar(usuario.id)}
+                  title={
+                    idsAmigos?.has(usuario.id)
+                      ? "Já faz parte da sua patota"
+                      : "Adicionar à patota"
+                  }
+                  aria-label={`Adicionar ${usuario.name} à patota`}
+                  className={
+                    idsAmigos?.has(usuario.id)
+                      ? "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-green-50 text-green-700"
+                      : "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-blue-200 text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                  }
+                >
+                  {adicionandoId === usuario.id ? (
+                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-blue-700 border-t-transparent" />
+                  ) : idsAmigos?.has(usuario.id) ? (
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2.5}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M20 6 9 17l-5-5" />
+                    </svg>
+                  ) : (
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                      <circle cx="9" cy="7" r="4" />
+                      <path d="M19 8v6M22 11h-6" />
+                    </svg>
+                  )}
+                </button>
+              ) : (
+                <span className="w-8 shrink-0" />
+              )}
               <button
                 type="button"
-                onClick={() => setUsuarioAberto(usuario)}
-                className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-blue-50"
+                onClick={() => abrirUsuario(usuario)}
+                className="flex min-w-0 flex-1 items-center gap-3 text-left hover:bg-blue-50"
               >
                 <ImagemUsuario
                   src={usuario.image}
                   alt={`Foto de ${usuario.name}`}
                   className="h-11 w-11 shrink-0 rounded-full object-cover"
                 />
-                <span className="font-medium text-black">{usuario.name}</span>
+                <span className="truncate font-medium text-black">
+                  {usuario.name}
+                </span>
               </button>
             </li>
           ))}
@@ -671,80 +865,253 @@ function ConteudoFastasminhas() {
       )}
 
       {usuarioAberto && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label={`Perfil de ${usuarioAberto.name}`}
-        >
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setUsuarioAberto(null)}
-          />
-          <div className="relative flex max-h-full w-full max-w-md flex-col rounded-2xl bg-white p-6 shadow-xl">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex min-w-0 items-center gap-3">
-                <ImagemUsuario
-                  src={usuarioAberto.image}
-                  alt={`Foto de ${usuarioAberto.name}`}
-                  className="h-16 w-16 shrink-0 rounded-full object-cover"
-                />
-                <div className="flex min-w-0 flex-col gap-0.5">
-                  <h3 className="text-lg font-semibold text-black">
-                    {usuarioAberto.name}
-                  </h3>
-                  <span className="text-xs text-black/40">
-                    Membro desde {formatarData(usuarioAberto.criadoEm)}
+        <ModalPerfilUsuario
+          usuario={usuarioAberto}
+          onFechar={fecharUsuario}
+          rodape={
+            sessaoUserId && sessaoUserId !== usuarioAberto.id ? (
+              <>
+                {erroAmizade && (
+                  <p className="mb-2 text-sm text-red-600">
+                    Não foi possível alterar a amizade. Tente novamente.
+                  </p>
+                )}
+                {idsAmigos?.has(usuarioAberto.id) ?? false ? (
+                  <span className="flex w-fit items-center gap-1.5 rounded-md bg-green-50 px-3 py-2 text-sm font-medium text-green-700">
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2.5}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M20 6 9 17l-5-5" />
+                    </svg>
+                    Vocês são amigos
                   </span>
-                </div>
-              </div>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={adicionandoId === usuarioAberto.id}
+                    onClick={() => adicionar(usuarioAberto.id)}
+                    className="flex w-fit items-center gap-1.5 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {adicionandoId === usuarioAberto.id ? (
+                      <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    ) : (
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M19 8v6M22 11h-6" />
+                      </svg>
+                    )}
+                    {adicionandoId === usuarioAberto.id
+                      ? "Adicionando..."
+                      : "Adicionar à patota"}
+                  </button>
+                )}
+              </>
+            ) : undefined
+          }
+        />
+      )}
+    </div>
+  );
+}
+
+function ConteudoPatota() {
+  const [amigos, setAmigos] = useState<AmigoDto[] | null>(null);
+  const [removendoId, setRemovendoId] = useState<string | null>(null);
+  const [erro, setErro] = useState(false);
+  const [amigoAberto, setAmigoAberto] = useState<AmigoDto | null>(null);
+
+  useEffect(() => {
+    let ativo = true;
+    obterAmigos()
+      .then((resultado) => {
+        if (ativo) setAmigos(resultado);
+      })
+      .catch(() => {
+        if (ativo) setAmigos([]);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
+  async function desfazer(amigoId: string) {
+    setRemovendoId(amigoId);
+    setErro(false);
+    try {
+      const resultado = await desfazerAmizade(amigoId);
+      if (resultado.ok) {
+        setAmigos((prev) => prev?.filter((a) => a.id !== amigoId) ?? prev);
+        setAmigoAberto((atual) => (atual?.id === amigoId ? null : atual));
+      } else {
+        setErro(true);
+      }
+    } catch {
+      setErro(true);
+    } finally {
+      setRemovendoId(null);
+    }
+  }
+
+  const perfilAberto = amigoAberto
+    ? {
+        id: amigoAberto.id,
+        name: amigoAberto.nome,
+        image: amigoAberto.imagem,
+        bio: amigoAberto.bio,
+        temaFavorito: amigoAberto.temaFavorito,
+        autorFavorito: amigoAberto.autorFavorito,
+        livroIndicado: amigoAberto.livroIndicado,
+        criadoEm: amigoAberto.criadoEm,
+      }
+    : null;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-2xl font-bold tracking-tight">Minha Patota</h2>
+        <p className="text-sm text-black/60">
+          Os amigos que fazem parte da sua patota de leitura.
+        </p>
+      </div>
+
+      {erro && (
+        <p className="text-sm text-red-600">
+          Não foi possível desfazer a amizade. Tente novamente.
+        </p>
+      )}
+
+      {amigos === null ? (
+        <p className="text-sm text-black/50">Carregando amigos...</p>
+      ) : amigos.length === 0 ? (
+        <p className="text-sm text-black/50">
+          Você ainda não tem amigos. Busque leitores em Fastasminhas e
+          adicione-os à sua patota.
+        </p>
+      ) : (
+        <ul className="divide-y divide-black/10 rounded-lg border border-black/10 bg-white">
+          {amigos.map((amigo) => (
+            <li
+              key={amigo.id}
+              className="flex items-center gap-2 px-4 py-3"
+            >
               <button
                 type="button"
-                onClick={() => setUsuarioAberto(null)}
-                aria-label="Fechar"
-                className="rounded-md p-2 text-black hover:bg-blue-50"
+                disabled={removendoId === amigo.id}
+                onClick={() => desfazer(amigo.id)}
+                title="Desfazer amizade"
+                aria-label={`Desfazer amizade com ${amigo.nome}`}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50"
               >
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-5 w-5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                >
-                  <path d="M6 6l12 12M18 6L6 18" />
-                </svg>
+                {removendoId === amigo.id ? (
+                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
+                ) : (
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M22 11h-6" />
+                  </svg>
+                )}
               </button>
-            </div>
+              <button
+                type="button"
+                onClick={() => setAmigoAberto(amigo)}
+                className="flex min-w-0 flex-1 items-center gap-3 text-left hover:bg-blue-50"
+              >
+                <ImagemUsuario
+                  src={amigo.imagem}
+                  alt={`Foto de ${amigo.nome}`}
+                  className="h-11 w-11 shrink-0 rounded-full object-cover"
+                />
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="truncate font-medium text-black">
+                    {amigo.nome}
+                  </span>
+                  <span className="truncate text-sm text-black/60">
+                    {amigo.bio?.trim() || "Sem bio."}
+                  </span>
+                </div>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
 
-            <div className="mt-4 flex flex-col gap-3 rounded-lg border border-black/10 px-4 py-3">
-              <div className="flex flex-col gap-0.5">
-                <span className="text-xs text-black/40">Sobre mim</span>
-                <p className="text-sm text-black/60">
-                  {usuarioAberto.bio?.trim() || "Sem bio."}
+      {perfilAberto && (
+        <ModalPerfilUsuario
+          usuario={perfilAberto}
+          onFechar={() => setAmigoAberto(null)}
+          rodape={
+            <>
+              {erro && (
+                <p className="mb-2 text-sm text-red-600">
+                  Não foi possível desfazer a amizade. Tente novamente.
                 </p>
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-xs text-black/40">Tema favorito</span>
-                <span className="text-sm text-black">
-                  {usuarioAberto.temaFavorito?.trim() || "—"}
+              )}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="flex w-fit items-center gap-1.5 rounded-md bg-green-50 px-3 py-2 text-sm font-medium text-green-700">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2.5}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                  Faz parte da sua patota
                 </span>
+                <button
+                  type="button"
+                  disabled={removendoId === perfilAberto.id}
+                  onClick={() => desfazer(perfilAberto.id)}
+                  className="flex w-fit items-center gap-1.5 rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                >
+                  {removendoId === perfilAberto.id ? (
+                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  ) : (
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-3.5 w-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14M10 11v6M14 11v6" />
+                    </svg>
+                  )}
+                  Desfazer amizade
+                </button>
               </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-xs text-black/40">Autor(a) favorito</span>
-                <span className="text-sm text-black">
-                  {usuarioAberto.autorFavorito?.trim() || "—"}
-                </span>
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-xs text-black/40">Livro que indica</span>
-                <span className="text-sm text-black">
-                  {usuarioAberto.livroIndicado?.trim() || "—"}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
       )}
     </div>
   );
@@ -1129,6 +1496,7 @@ function ConteudoCadastro({ onCriado }: { onCriado?: () => void }) {
 const CONTEUDO: Record<Exclude<MenuKey, "cadastrar" | "editar-perfil">, ReactNode> = {
   perfil: <ConteudoPerfil />,
   fastasminhas: <ConteudoFastasminhas />,
+  patota: <ConteudoPatota />,
   clubes: <ConteudoClubes />,
   sobre: <ConteudoSobre />,
 };
