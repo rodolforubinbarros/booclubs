@@ -29,7 +29,7 @@ import {
 
 type MenuKey =
   | "perfil"
-  | "fastasminhas"
+  | "fantasminhas"
   | "patota"
   | "clubes"
   | "cadastrar"
@@ -38,7 +38,7 @@ type MenuKey =
 
 const MENU_PRINCIPAL: { key: MenuKey; label: string }[] = [
   { key: "perfil", label: "Meu Perfil" },
-  { key: "fastasminhas", label: "Fastasminhas" },
+  { key: "fantasminhas", label: "Fantasminhas" },
   { key: "patota", label: "Minha Patota" },
   { key: "clubes", label: "Clubes de Leitura" },
 ];
@@ -689,7 +689,7 @@ function ModalPerfilUsuario({
   );
 }
 
-function ConteudoFastasminhas() {
+function ConteudoFantasminhas() {
   const { data: sessao } = useSession();
   const sessaoUserId = sessao?.user?.id;
   const [busca, setBusca] = useState("");
@@ -767,7 +767,7 @@ function ConteudoFastasminhas() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <h2 className="text-2xl font-bold tracking-tight">Fastasminhas</h2>
+        <h2 className="text-2xl font-bold tracking-tight">Fantasminhas</h2>
         <p className="text-sm text-black/60">
           Busque leitores por nome, biografia, tema favorito, autor(a) favorito
           ou livro que indica.
@@ -999,7 +999,7 @@ function ConteudoPatota() {
         <p className="text-sm text-black/50">Carregando amigos...</p>
       ) : amigos.length === 0 ? (
         <p className="text-sm text-black/50">
-          Você ainda não tem amigos. Busque leitores em Fastasminhas e
+          Você ainda não tem amigos. Busque leitores em Fantasminhas e
           adicione-os à sua patota.
         </p>
       ) : (
@@ -1495,7 +1495,7 @@ function ConteudoCadastro({ onCriado }: { onCriado?: () => void }) {
 
 const CONTEUDO: Record<Exclude<MenuKey, "cadastrar" | "editar-perfil">, ReactNode> = {
   perfil: <ConteudoPerfil />,
-  fastasminhas: <ConteudoFastasminhas />,
+  fantasminhas: <ConteudoFantasminhas />,
   patota: <ConteudoPatota />,
   clubes: <ConteudoClubes />,
   sobre: <ConteudoSobre />,
