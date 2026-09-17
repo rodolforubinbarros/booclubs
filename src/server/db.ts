@@ -156,12 +156,13 @@ export async function listarClubesDoUsuario(userId: string): Promise<ClubeDoUsua
 export type MembroDoClube = {
   id: string;
   nome: string;
+  imagem: string | null;
   papel: string;
 };
 
 export async function listarMembrosDoClube(clubeId: string): Promise<MembroDoClube[]> {
   return sql<MembroDoClube[]>`
-    SELECT u.id, u.name AS nome, m.papel
+    SELECT u.id, u.name AS nome, u.image AS imagem, m.papel
     FROM clube_membros m
     JOIN "user" u ON u.id = m.user_id
     WHERE m.clube_id = ${clubeId}

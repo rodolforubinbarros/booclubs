@@ -7,6 +7,7 @@ import { signOut, useSession } from "@/lib/auth-client";
 import { useAdministrador } from "@/lib/use-admin";
 import { UserStatus } from "@/components/user-status";
 import { ImagemClube, ImagemUsuario } from "@/components/imagens";
+import { ChaveIcon } from "@/components/icones";
 import {
   criarClube,
   entrarNoClube,
@@ -466,33 +467,38 @@ function ConteudoClubes() {
                     {clube.membros} membro(s)
                   </button>
                   {administrador && (
-                    <button
-                      type="button"
-                      disabled={excluindoId === clube.id}
-                      onClick={() => excluir(clube)}
-                      title="Excluir clube"
-                      aria-label={`Excluir o clube ${clube.nome}`}
-                      className="flex h-7 w-7 items-center justify-center rounded-full border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                    <span
+                      title="Ação exclusiva de administrador"
+                      className="flex items-center gap-1"
                     >
-                      {excluindoId === clube.id ? (
-                        <span className="h-3 w-3 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
-                      ) : (
-                        <svg
-                          viewBox="0 0 24 24"
-                          className="h-4 w-4"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth={2}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M3 6h18" />
-                          <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                          <path d="M10 11v6M14 11v6" />
-                        </svg>
-                      )}
-                    </button>
+                      <ChaveIcon className="h-4 w-4 text-amber-600" />
+                      <button
+                        type="button"
+                        disabled={excluindoId === clube.id}
+                        onClick={() => excluir(clube)}
+                        aria-label={`Excluir o clube ${clube.nome}`}
+                        className="flex h-7 w-7 items-center justify-center rounded-full border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        {excluindoId === clube.id ? (
+                          <span className="h-3 w-3 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
+                        ) : (
+                          <svg
+                            viewBox="0 0 24 24"
+                            className="h-4 w-4"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M3 6h18" />
+                            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                            <path d="M10 11v6M14 11v6" />
+                          </svg>
+                        )}
+                      </button>
+                    </span>
                   )}
                 </div>
               </div>
@@ -581,7 +587,12 @@ function ConteudoClubes() {
                       key={membro.id}
                       className="flex items-center justify-between gap-4 px-4 py-3"
                     >
-                      <div className="flex min-w-0 flex-col">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <ImagemUsuario
+                          src={membro.imagem}
+                          alt={`Foto de ${membro.nome}`}
+                          className="h-8 w-8 shrink-0 rounded-full object-cover"
+                        />
                         <span className="font-medium text-black">
                           {membro.nome}
                         </span>
@@ -610,7 +621,7 @@ function ConteudoSobre() {
   );
 }
 
-function ConteudoCadastro() {
+function ConteudoCadastro({ onCriado }: { onCriado?: () => void }) {
   const [estado, setEstado] = useState<
     "idle" | "enviando" | "feito" | "erro"
   >("idle");
@@ -618,16 +629,25 @@ function ConteudoCadastro() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
     setEstado("enviando");
     setErro("");
+    const formData = new FormData(form);
     try {
-      const resultado = await criarClube(new FormData(event.currentTarget));
+      const resultado = await criarClube({
+        nome: String(formData.get("nome") ?? "").trim(),
+        descricao: String(formData.get("descricao") ?? "").trim(),
+        genero: String(formData.get("genero") ?? "").trim(),
+        local: String(formData.get("local") ?? "").trim(),
+        link: String(formData.get("link") ?? "").trim(),
+      });
       if (resultado?.erro) {
         setErro(resultado.erro);
         setEstado("erro");
       } else {
+        form.reset();
         setEstado("feito");
-        event.currentTarget.reset();
+        onCriado?.();
       }
     } catch {
       setErro("Erro inesperado ao criar o clube. Tente novamente.");
@@ -667,12 +687,13 @@ function ConteudoCadastro() {
 
         <div className="flex flex-col gap-1">
           <label htmlFor="descricao" className="text-sm font-medium text-black">
-            Descrição
+            Descrição *
           </label>
           <textarea
             id="descricao"
             name="descricao"
             rows={3}
+            required
             placeholder="Como e quando o clube se encontra?"
             className="rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
           />
@@ -680,12 +701,13 @@ function ConteudoCadastro() {
 
         <div className="flex flex-col gap-1">
           <label htmlFor="genero" className="text-sm font-medium text-black">
-            Gênero / tema
+            Gênero / tema *
           </label>
           <input
             id="genero"
             name="genero"
             type="text"
+            required
             placeholder="Ex.: Romance, ficção científica..."
             className="rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
           />
@@ -693,12 +715,13 @@ function ConteudoCadastro() {
 
         <div className="flex flex-col gap-1">
           <label htmlFor="local" className="text-sm font-medium text-black">
-            Local
+            Local *
           </label>
           <input
             id="local"
             name="local"
             type="text"
+            required
             placeholder="Ex.: A definir, biblioteca pública..."
             className="rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
           />
@@ -727,18 +750,17 @@ function ConteudoCadastro() {
           disabled={estado === "enviando"}
           className="w-fit rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
         >
-          {estado === "enviando" ? "Criando..." : "Criar clube"}
+          {estado === "enviando" ? "Criando..." : "Cadastrar"}
         </button>
       </form>
     </div>
   );
 }
 
-const CONTEUDO: Record<MenuKey, ReactNode> = {
+const CONTEUDO: Record<Exclude<MenuKey, "cadastrar">, ReactNode> = {
   home: <ConteudoHome />,
   perfil: <ConteudoPerfil />,
   clubes: <ConteudoClubes />,
-  cadastrar: <ConteudoCadastro />,
   sobre: <ConteudoSobre />,
 };
 
@@ -747,11 +769,13 @@ function MenuButton({
   active,
   onClick,
   center = false,
+  icone,
 }: {
   item: { key: MenuKey; label: string };
   active: boolean;
   onClick: () => void;
   center?: boolean;
+  icone?: ReactNode;
 }) {
   return (
     <button
@@ -761,6 +785,9 @@ function MenuButton({
         center ? "text-center" : "text-left"
       } ${active ? "bg-blue-600 text-white" : "text-black hover:bg-blue-50"}`}
     >
+      {icone && (
+        <span className="-mb-0.5 mr-1.5 inline-flex">{icone}</span>
+      )}
       {item.label}
     </button>
   );
@@ -769,9 +796,11 @@ function MenuButton({
 function Sidebar({
   active,
   onSelect,
+  administrador,
 }: {
   active: MenuKey;
   onSelect: (key: MenuKey) => void;
+  administrador: boolean;
 }) {
   const router = useRouter();
 
@@ -803,15 +832,17 @@ function Sidebar({
       </nav>
 
       <nav className="mt-4 flex flex-col gap-1 border-t border-black/10 pt-4">
-        {MENU_CADASTRO.map((item) => (
-          <MenuButton
-            key={item.key}
-            item={item}
-            active={active === item.key}
-            onClick={() => onSelect(item.key)}
-            center
-          />
-        ))}
+        {administrador &&
+          MENU_CADASTRO.map((item) => (
+            <MenuButton
+              key={item.key}
+              item={item}
+              active={active === item.key}
+              onClick={() => onSelect(item.key)}
+              center
+              icone={<ChaveIcon className="h-3.5 w-3.5" />}
+            />
+          ))}
       </nav>
 
       <nav className="flex flex-col gap-1">
@@ -845,6 +876,7 @@ function Sidebar({
 export function Dashboard() {
   const [active, setActive] = useState<MenuKey>("home");
   const [menuOpen, setMenuOpen] = useState(false);
+  const administrador = useAdministrador();
 
   function select(key: MenuKey) {
     setActive(key);
@@ -887,7 +919,7 @@ export function Dashboard() {
       </header>
 
       <aside className="hidden w-64 flex-col border-r border-black/10 bg-white p-4 md:flex">
-        <Sidebar active={active} onSelect={select} />
+        <Sidebar active={active} onSelect={select} administrador={administrador} />
       </aside>
 
       {menuOpen && (
@@ -896,7 +928,7 @@ export function Dashboard() {
             className="absolute inset-0 bg-black/40"
             onClick={() => setMenuOpen(false)}
           />
-          <aside className="absolute left-0 top-0 flex h-full w-64 flex-col bg-white p-4 shadow-xl">
+<aside className="absolute left-0 top-0 flex h-full w-64 flex-col bg-white p-4 shadow-xl">
             <div className="mb-4 flex justify-end">
               <button
                 type="button"
@@ -906,7 +938,7 @@ export function Dashboard() {
               >
                 <svg
                   viewBox="0 0 24 24"
-                  className="h-6 w-6"
+                  className="h-5 w-5"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth={2}
@@ -916,14 +948,18 @@ export function Dashboard() {
                 </svg>
               </button>
             </div>
-            <Sidebar active={active} onSelect={select} />
+            <Sidebar active={active} onSelect={select} administrador={administrador} />
           </aside>
         </div>
       )}
 
       <section className="flex min-h-0 flex-1 flex-col bg-blue-50">
         <div className="flex-1 overflow-y-auto p-4 sm:p-8">
-          {CONTEUDO[active]}
+          {active === "cadastrar" ? (
+            <ConteudoCadastro onCriado={() => select("clubes")} />
+          ) : (
+            CONTEUDO[active]
+          )}
         </div>
         <UserStatus inline />
       </section>

@@ -108,6 +108,7 @@ export async function obterClubesDoUsuario(
 export type MembroDoClubeDto = {
   id: string;
   nome: string;
+  imagem: string | null;
   papel: string;
 };
 
@@ -117,20 +118,24 @@ export async function obterMembrosDoClube(
   return listarMembrosDoClube(clubeId);
 }
 
-export async function criarClube(
-  formData: FormData,
-): Promise<{ ok?: boolean; erro?: string }> {
+export async function criarClube(dados: {
+  nome: string;
+  descricao: string;
+  genero: string;
+  local: string;
+  link: string;
+}): Promise<{ ok?: boolean; erro?: string }> {
   try {
     const sessao = await obterSessao();
     const userId = sessao?.user?.id;
     if (!userId) return { erro: "Faça login para criar um clube." };
 
-    const nome = String(formData.get("nome") ?? "").trim();
+    const nome = dados.nome.trim();
     if (!nome) return { erro: "Informe o nome do clube." };
-    const descricao = String(formData.get("descricao") ?? "").trim() || null;
-    const genero = String(formData.get("genero") ?? "").trim() || null;
-    const local = String(formData.get("local") ?? "").trim() || null;
-    const link = String(formData.get("link") ?? "").trim() || null;
+    const descricao = dados.descricao.trim() || null;
+    const genero = dados.genero.trim() || null;
+    const local = dados.local.trim() || null;
+    const link = dados.link.trim() || null;
 
     const id = crypto.randomUUID();
     await criarClubeComDono({

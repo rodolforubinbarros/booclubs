@@ -3,6 +3,7 @@
 import { useSession } from "@/lib/auth-client";
 import { useAdministrador } from "@/lib/use-admin";
 import { ImagemUsuario } from "@/components/imagens";
+import { ChaveIcon } from "@/components/icones";
 
 export function UserStatus({ inline = false }: { inline?: boolean }) {
   const { data, isPending } = useSession();
@@ -34,8 +35,9 @@ export function UserStatus({ inline = false }: { inline?: boolean }) {
           {administrador && (
             <span
               title="Administrador do BooClubs"
-              className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800"
+              className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800"
             >
+              <ChaveIcon className="h-3 w-3" />
               Admin
             </span>
           )}
