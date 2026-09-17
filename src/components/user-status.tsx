@@ -1,9 +1,12 @@
 "use client";
 
 import { useSession } from "@/lib/auth-client";
+import { useAdministrador } from "@/lib/use-admin";
+import { ImagemUsuario } from "@/components/imagens";
 
 export function UserStatus({ inline = false }: { inline?: boolean }) {
   const { data, isPending } = useSession();
+  const administrador = useAdministrador();
 
   const container = inline
     ? "px-4 pb-4 text-center text-sm"
@@ -20,10 +23,23 @@ export function UserStatus({ inline = false }: { inline?: boolean }) {
   return (
     <div className={`text-black/50 ${container}`}>
       {user ? (
-        <p>
+        <p className="flex items-center justify-center gap-1.5">
+          <ImagemUsuario
+            src={user.image}
+            alt={`Foto de ${user.name}`}
+            className="h-6 w-6 rounded-full object-cover"
+          />
           Logado como{" "}
           <span className="font-medium text-black">{user.name}</span> ·{" "}
           {user.email}
+          {administrador && (
+            <span
+              title="Administrador do BooClubs"
+              className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800"
+            >
+              Admin
+            </span>
+          )}
         </p>
       ) : (
         <p>Você não está logado.</p>

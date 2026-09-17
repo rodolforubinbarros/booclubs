@@ -32,6 +32,7 @@ export type ClubeLeitura = {
   id: string;
   nome: string;
   descricao: string | null;
+  imagem: string | null;
   genero: string | null;
   local: string | null;
   link: string | null;
@@ -69,6 +70,7 @@ export async function listarClubes(
         c.id,
         c.nome,
         c.descricao,
+        c.imagem,
         c.genero,
         c.local,
         c.link,
@@ -96,6 +98,7 @@ export async function listarClubes(
       c.id,
       c.nome,
       c.descricao,
+      c.imagem,
       c.genero,
       c.local,
       c.link,
@@ -129,6 +132,7 @@ export async function listarClubesDoUsuario(userId: string): Promise<ClubeDoUsua
       c.id,
       c.nome,
       c.descricao,
+      c.imagem,
       c.genero,
       c.local,
       c.link,
@@ -201,6 +205,13 @@ export async function adicionarMembro(
 
 export async function removerMembro(clubeId: string, userId: string) {
   return sql`DELETE FROM clube_membros WHERE clube_id = ${clubeId} AND user_id = ${userId}`;
+}
+
+export async function deletarClube(clubeId: string) {
+  return sql.begin(async (tx) => {
+    await tx`DELETE FROM clube_membros WHERE clube_id = ${clubeId}`;
+    await tx`DELETE FROM clubes WHERE id = ${clubeId}`;
+  });
 }
 
 export async function transferirDono(clubeId: string) {

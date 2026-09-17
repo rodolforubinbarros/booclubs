@@ -1,11 +1,13 @@
 "use server";
 
 import { headers } from "next/headers";
+import { EmailDeAdministrador } from "@/lib/admin";
 import { auth } from "@/lib/auth";
 import {
   adicionarMembro,
   criarClubeComDono,
   criarTeste,
+  deletarClube,
   listarClubes,
   listarClubesDoUsuario,
   listarMembrosDoClube,
@@ -37,6 +39,7 @@ export type ClubeLeituraDto = {
   id: string;
   nome: string;
   descricao: string | null;
+  imagem: string | null;
   genero: string | null;
   local: string | null;
   link: string | null;
@@ -56,6 +59,11 @@ export type ClubeVisivelDto = ClubeLeituraDto & {
 
 async function obterSessao() {
   return auth.api.getSession({ headers: await headers() });
+}
+
+export async function souAdministrador(): Promise<boolean> {
+  const sessao = await obterSessao();
+  return EmailDeAdministrador(sessao?.user?.email);
 }
 
 function serializarUsuario(usuario: Usuario): UsuarioDto {
@@ -138,6 +146,21 @@ export async function criarClube(
   } catch (erro) {
     console.error("[criarClube]", erro);
     return { erro: "Erro inesperado ao criar o clube. Tente novamente." };
+  }
+}
+
+export async function excluirClube(
+  clubeId: string,
+): Promise<{ ok: boolean; erro?: string }> {
+  try {
+    if (!(await souAdministrador())) {
+      return { ok: false, erro: "Sem permissão para excluir clubes." };
+    }
+    await deletarClube(clubeId);
+    return { ok: true };
+  } catch (erro) {
+    console.error("[excluirClube]", erro);
+    return { ok: false, erro: "Erro inesperado ao excluir o clube." };
   }
 }
 

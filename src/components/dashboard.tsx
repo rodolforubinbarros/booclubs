@@ -4,10 +4,13 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { signOut, useSession } from "@/lib/auth-client";
+import { useAdministrador } from "@/lib/use-admin";
 import { UserStatus } from "@/components/user-status";
+import { ImagemClube, ImagemUsuario } from "@/components/imagens";
 import {
   criarClube,
   entrarNoClube,
+  excluirClube,
   obterClubes,
   obterClubesDoUsuario,
   obterMembrosDoClube,
@@ -93,7 +96,12 @@ function ConteudoHome() {
               key={usuario.id}
               className="flex items-center justify-between gap-4 px-4 py-3"
             >
-              <div className="flex min-w-0 flex-col">
+              <div className="flex min-w-0 items-center gap-3">
+                <ImagemUsuario
+                  src={usuario.image}
+                  alt={`Foto de ${usuario.name}`}
+                  className="h-8 w-8 shrink-0 rounded-full object-cover"
+                />
                 <span className="font-medium text-black">{usuario.name}</span>
               </div>
               <span className="shrink-0 text-sm text-black/40">
@@ -170,9 +178,16 @@ function ConteudoPerfil() {
     <div className="flex flex-col gap-4">
       <h2 className="text-2xl font-bold tracking-tight">Meu Perfil</h2>
 
-      <div className="flex flex-col gap-0.5 rounded-lg border border-black/10 bg-white px-4 py-3">
-        <span className="text-lg font-semibold text-black">{user.name}</span>
-        <span className="text-sm text-black/60">{user.email}</span>
+      <div className="flex items-center gap-4 rounded-lg border border-black/10 bg-white px-4 py-3">
+        <ImagemUsuario
+          src={user.image}
+          alt={`Foto de ${user.name}`}
+          className="h-16 w-16 shrink-0 rounded-full object-cover"
+        />
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="text-lg font-semibold text-black">{user.name}</span>
+          <span className="text-sm text-black/60">{user.email}</span>
+        </div>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -189,55 +204,67 @@ function ConteudoPerfil() {
         ) : (
           <ul className="divide-y divide-black/10 rounded-lg border border-black/10 bg-white">
             {clubes.map((clube) => (
-              <li key={clube.id} className="flex flex-col gap-0.5 px-4 py-3">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="font-medium text-black">{clube.nome}</span>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-                      {clube.papel}
+              <li
+                key={clube.id}
+                className="flex items-center gap-3 px-4 py-3"
+              >
+                <ImagemClube
+                  src={clube.imagem}
+                  alt={`Imagem do clube ${clube.nome}`}
+                  className="h-11 w-11 shrink-0 rounded-md object-cover"
+                />
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="font-medium text-black">
+                      {clube.nome}
                     </span>
-                    <button
-                      type="button"
-                      disabled={saindoId === clube.id}
-                      onClick={() => sair(clube.id)}
-                      title="Sair do clube"
-                      aria-label={`Sair do clube ${clube.nome}`}
-                      className="flex h-6 w-6 items-center justify-center rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
-                    >
-                      {saindoId === clube.id ? (
-                        <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                      ) : (
-                        <svg
-                          viewBox="0 0 24 24"
-                          className="h-3.5 w-3.5"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth={2}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14" />
-                          <path d="M10 11v6M14 11v6" />
-                        </svg>
-                      )}
-                    </button>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                        {clube.papel}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={saindoId === clube.id}
+                        onClick={() => sair(clube.id)}
+                        title="Sair do clube"
+                        aria-label={`Sair do clube ${clube.nome}`}
+                        className="flex h-6 w-6 items-center justify-center rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                      >
+                        {saindoId === clube.id ? (
+                          <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        ) : (
+                          <svg
+                            viewBox="0 0 24 24"
+                            className="h-3.5 w-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14" />
+                            <path d="M10 11v6M14 11v6" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
                   </div>
+                  <p className="text-sm text-black/60">
+                    {clube.genero ?? "Sem genero"} ·{" "}
+                    {clube.local ?? "Local a combinar"} · {clube.membros}{" "}
+                    membro(s)
+                  </p>
+                  {clube.link && (
+                    <a
+                      href={clube.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-medium text-blue-600 hover:underline"
+                    >
+                      {rotuloLink(clube.link)}
+                    </a>
+                  )}
                 </div>
-                <p className="text-sm text-black/60">
-                  {clube.genero ?? "Sem genero"} ·{" "}
-                  {clube.local ?? "Local a combinar"} · {clube.membros}{" "}
-                  membro(s)
-                </p>
-                {clube.link && (
-                  <a
-                    href={clube.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs font-medium text-blue-600 hover:underline"
-                  >
-                    {rotuloLink(clube.link)}
-                  </a>
-                )}
               </li>
             ))}
           </ul>
@@ -248,6 +275,7 @@ function ConteudoPerfil() {
 }
 
 function ConteudoClubes() {
+  const administrador = useAdministrador();
   const [busca, setBusca] = useState("");
   const [buscaDiferida, setBuscaDiferida] = useState("");
   const [clubes, setClubes] = useState<ClubeVisivelDto[] | null>(null);
@@ -258,6 +286,8 @@ function ConteudoClubes() {
   const [atualizacao, setAtualizacao] = useState(0);
   const [entrandoId, setEntrandoId] = useState<string | null>(null);
   const [erroEntrada, setErroEntrada] = useState(false);
+  const [excluindoId, setExcluindoId] = useState<string | null>(null);
+  const [erroExclusao, setErroExclusao] = useState(false);
 
   useEffect(() => {
     const temporizador = setTimeout(() => setBuscaDiferida(busca), 400);
@@ -317,6 +347,27 @@ function ConteudoClubes() {
     }
   }
 
+  async function excluir(clube: ClubeVisivelDto) {
+    if (!window.confirm(`Excluir o clube "${clube.nome}"? Essa ação não pode ser desfeita.`)) {
+      return;
+    }
+    setExcluindoId(clube.id);
+    setErroExclusao(false);
+    try {
+      const resultado = await excluirClube(clube.id);
+      if (resultado.ok) {
+        setClubes((prev) => prev?.filter((c) => c.id !== clube.id) ?? prev);
+        if (clubeAberto?.id === clube.id) setClubeAberto(null);
+      } else {
+        setErroExclusao(true);
+      }
+    } catch {
+      setErroExclusao(true);
+    } finally {
+      setExcluindoId(null);
+    }
+  }
+
   function fecharMembros() {
     setClubeAberto(null);
   }
@@ -345,6 +396,12 @@ function ConteudoClubes() {
         </p>
       )}
 
+      {erroExclusao && (
+        <p className="text-sm text-red-600">
+          Não foi possível excluir este clube. Tente novamente.
+        </p>
+      )}
+
       {clubes === null ? (
         <p className="text-sm text-black/50">Carregando clubes...</p>
       ) : clubes.length === 0 ? (
@@ -356,8 +413,14 @@ function ConteudoClubes() {
           {clubes.map((clube) => (
             <li
               key={clube.id}
-              className="flex flex-col gap-1 rounded-lg border border-black/10 bg-white px-4 py-3"
+              className="flex flex-col gap-1 overflow-hidden rounded-lg border border-black/10 bg-white"
             >
+              <ImagemClube
+                src={clube.imagem}
+                alt={`Imagem do clube ${clube.nome}`}
+                className="h-32 w-full object-cover"
+              />
+              <div className="flex flex-col gap-1 px-4 pb-3 pt-1">
               <div className="flex items-center justify-between gap-4">
                 <span className="text-lg font-semibold text-black">
                   {clube.nome}
@@ -402,6 +465,35 @@ function ConteudoClubes() {
                   >
                     {clube.membros} membro(s)
                   </button>
+                  {administrador && (
+                    <button
+                      type="button"
+                      disabled={excluindoId === clube.id}
+                      onClick={() => excluir(clube)}
+                      title="Excluir clube"
+                      aria-label={`Excluir o clube ${clube.nome}`}
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      {excluindoId === clube.id ? (
+                        <span className="h-3 w-3 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
+                      ) : (
+                        <svg
+                          viewBox="0 0 24 24"
+                          className="h-4 w-4"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M3 6h18" />
+                          <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                          <path d="M10 11v6M14 11v6" />
+                        </svg>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
               <p className="text-sm text-black/70">
@@ -424,6 +516,7 @@ function ConteudoClubes() {
                 <span className="text-xs text-black/40">
                   Criado em {formatarData(clube.criadoEm)}
                 </span>
+              </div>
               </div>
             </li>
           ))}
