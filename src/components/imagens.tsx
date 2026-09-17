@@ -1,5 +1,5 @@
-const IMAGEM_USUARIO_PADRAO = "/imagens/usuario_padrao.svg";
-const IMAGEM_CLUBE_PADRAO = "/imagens/clube_padrao.svg";
+const IMAGEM_USUARIO_PADRAO = "/imagens/usuario_padrao.png";
+const IMAGEM_CLUBE_PADRAO = "/imagens/clube_padrao.png";
 
 export function ImagemUsuario({
   src,

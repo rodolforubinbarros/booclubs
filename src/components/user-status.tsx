@@ -30,8 +30,7 @@ export function UserStatus({ inline = false }: { inline?: boolean }) {
             className="h-6 w-6 rounded-full object-cover"
           />
           Logado como{" "}
-          <span className="font-medium text-black">{user.name}</span> ·{" "}
-          {user.email}
+          <span className="font-medium text-black">{user.name}</span>
           {administrador && (
             <span
               title="Administrador do BooClubs"
