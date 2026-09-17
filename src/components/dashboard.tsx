@@ -15,14 +15,17 @@ import {
   obterClubes,
   obterClubesDoUsuario,
   obterMembrosDoClube,
+  obterUsuariosPorBusca,
   sairDoClube,
   type ClubeDoUsuarioDto,
   type ClubeVisivelDto,
   type MembroDoClubeDto,
+  type UsuarioPerfilDto,
 } from "@/server/actions";
 
 type MenuKey =
   | "perfil"
+  | "fastasminhas"
   | "clubes"
   | "cadastrar"
   | "sobre"
@@ -30,6 +33,7 @@ type MenuKey =
 
 const MENU_PRINCIPAL: { key: MenuKey; label: string }[] = [
   { key: "perfil", label: "Meu Perfil" },
+  { key: "fastasminhas", label: "Fastasminhas" },
   { key: "clubes", label: "Clubes de Leitura" },
 ];
 
@@ -593,6 +597,159 @@ function ConteudoClubes() {
   );
 }
 
+function ConteudoFastasminhas() {
+  const [busca, setBusca] = useState("");
+  const [buscaDiferida, setBuscaDiferida] = useState("");
+  const [usuarios, setUsuarios] = useState<UsuarioPerfilDto[] | null>(null);
+  const [usuarioAberto, setUsuarioAberto] = useState<UsuarioPerfilDto | null>(
+    null,
+  );
+
+  useEffect(() => {
+    const temporizador = setTimeout(() => setBuscaDiferida(busca), 400);
+    return () => clearTimeout(temporizador);
+  }, [busca]);
+
+  useEffect(() => {
+    if (!buscaDiferida.trim()) return;
+    let ativo = true;
+    obterUsuariosPorBusca(buscaDiferida)
+      .then((resultado) => {
+        if (ativo) setUsuarios(resultado);
+      })
+      .catch(() => {
+        if (ativo) setUsuarios([]);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [buscaDiferida]);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-2xl font-bold tracking-tight">Fastasminhas</h2>
+        <p className="text-sm text-black/60">
+          Busque leitores por nome, biografia, tema favorito, autor(a) favorito
+          ou livro que indica.
+        </p>
+      </div>
+
+      <input
+        type="search"
+        value={busca}
+        onChange={(event) => setBusca(event.target.value)}
+        placeholder="Buscar usuários..."
+        className="w-full max-w-md rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+      />
+
+      {!buscaDiferida.trim() ? null : usuarios === null ? (
+        <p className="text-sm text-black/50">Carregando usuários...</p>
+      ) : usuarios.length === 0 ? (
+        <p className="text-sm text-black/50">
+          Nenhum usuário encontrado para &quot;{buscaDiferida}&quot;.
+        </p>
+      ) : (
+        <ul className="divide-y divide-black/10 rounded-lg border border-black/10 bg-white">
+          {usuarios.map((usuario) => (
+            <li key={usuario.id}>
+              <button
+                type="button"
+                onClick={() => setUsuarioAberto(usuario)}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-blue-50"
+              >
+                <ImagemUsuario
+                  src={usuario.image}
+                  alt={`Foto de ${usuario.name}`}
+                  className="h-11 w-11 shrink-0 rounded-full object-cover"
+                />
+                <span className="font-medium text-black">{usuario.name}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {usuarioAberto && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Perfil de ${usuarioAberto.name}`}
+        >
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setUsuarioAberto(null)}
+          />
+          <div className="relative flex max-h-full w-full max-w-md flex-col rounded-2xl bg-white p-6 shadow-xl">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <ImagemUsuario
+                  src={usuarioAberto.image}
+                  alt={`Foto de ${usuarioAberto.name}`}
+                  className="h-16 w-16 shrink-0 rounded-full object-cover"
+                />
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <h3 className="text-lg font-semibold text-black">
+                    {usuarioAberto.name}
+                  </h3>
+                  <span className="text-xs text-black/40">
+                    Membro desde {formatarData(usuarioAberto.criadoEm)}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setUsuarioAberto(null)}
+                aria-label="Fechar"
+                className="rounded-md p-2 text-black hover:bg-blue-50"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-5 w-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                >
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-3 rounded-lg border border-black/10 px-4 py-3">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs text-black/40">Sobre mim</span>
+                <p className="text-sm text-black/60">
+                  {usuarioAberto.bio?.trim() || "Sem bio."}
+                </p>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs text-black/40">Tema favorito</span>
+                <span className="text-sm text-black">
+                  {usuarioAberto.temaFavorito?.trim() || "—"}
+                </span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs text-black/40">Autor(a) favorito</span>
+                <span className="text-sm text-black">
+                  {usuarioAberto.autorFavorito?.trim() || "—"}
+                </span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs text-black/40">Livro que indica</span>
+                <span className="text-sm text-black">
+                  {usuarioAberto.livroIndicado?.trim() || "—"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ConteudoEditarPerfil({ onVoltar }: { onVoltar?: () => void }) {
   const { data, isPending } = useSession();
   const user = data?.user;
@@ -971,6 +1128,7 @@ function ConteudoCadastro({ onCriado }: { onCriado?: () => void }) {
 
 const CONTEUDO: Record<Exclude<MenuKey, "cadastrar" | "editar-perfil">, ReactNode> = {
   perfil: <ConteudoPerfil />,
+  fastasminhas: <ConteudoFastasminhas />,
   clubes: <ConteudoClubes />,
   sobre: <ConteudoSobre />,
 };

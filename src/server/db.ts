@@ -58,6 +58,41 @@ export async function listarUsuarios(): Promise<Usuario[]> {
   `;
 }
 
+export type UsuarioPerfil = {
+  id: string;
+  name: string;
+  image: string | null;
+  bio: string | null;
+  temaFavorito: string | null;
+  autorFavorito: string | null;
+  livroIndicado: string | null;
+  createdAt: Date;
+};
+
+export async function listarUsuariosPorBusca(
+  busca: string,
+): Promise<UsuarioPerfil[]> {
+  if (!busca.trim()) {
+    return sql<UsuarioPerfil[]>`
+      SELECT id, name, image, bio, "temaFavorito", "autorFavorito", "livroIndicado", "createdAt"
+      FROM "user"
+      ORDER BY name ASC
+    `;
+  }
+
+  const termo = `%${busca.trim()}%`;
+  return sql<UsuarioPerfil[]>`
+    SELECT id, name, image, bio, "temaFavorito", "autorFavorito", "livroIndicado", "createdAt"
+    FROM "user"
+    WHERE name ILIKE ${termo}
+       OR bio ILIKE ${termo}
+       OR "temaFavorito" ILIKE ${termo}
+       OR "autorFavorito" ILIKE ${termo}
+       OR "livroIndicado" ILIKE ${termo}
+    ORDER BY name ASC
+  `;
+}
+
 export async function listarClubes(
   busca = "",
   userId: string | null = null,
