@@ -1779,7 +1779,7 @@ function Sidebar({
             className="h-10 w-auto"
             priority
           />
-          <span className="text-xl font-bold tracking-tight text-blue-600">
+          <span className="font-boo text-2xl font-bold tracking-tight text-blue-600">
             BooClubs
           </span>
         </Link>
@@ -1866,7 +1866,7 @@ export function Dashboard() {
               className="h-8 w-auto"
               priority
             />
-            <span className="text-lg font-bold tracking-tight text-blue-600">
+            <span className="font-boo text-xl font-bold tracking-tight text-blue-600">
               BooClubs
             </span>
           </Link>

@@ -35,7 +35,7 @@ export function App() {
               className="h-20 w-auto sm:h-24"
               priority
             />
-            <h1 className="text-4xl font-bold tracking-tight text-blue-600 sm:text-5xl">
+            <h1 className="font-boo text-5xl font-bold tracking-tight text-blue-600 sm:text-6xl">
               BooClubs
             </h1>
           </Link>

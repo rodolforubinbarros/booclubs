@@ -111,7 +111,7 @@ export function CadastroForm() {
             className="h-16 w-auto"
             priority
           />
-          <h1 className="text-3xl font-bold tracking-tight text-blue-600">
+          <h1 className="font-boo text-4xl font-bold tracking-tight text-blue-600">
             BooClubs
           </h1>
         </Link>
