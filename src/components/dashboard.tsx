@@ -115,7 +115,6 @@ function contemTransparencia(
       if (dados[i] < 255) return true;
     }
   } catch {
-    // Sem acesso aos pixels (canvas sujo) -> assume sem transparência.
   }
   return false;
 }
