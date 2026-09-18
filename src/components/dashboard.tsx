@@ -184,6 +184,12 @@ function ConteudoPerfil({ onEditar }: { onEditar?: () => void }) {
     id: string;
     nome: string;
   } | null>(null);
+  const [clubeAberto, setClubeAberto] = useState<ClubeDoUsuarioDto | null>(
+    null,
+  );
+  const [membros, setMembros] = useState<MembroDoClubeDto[]>([]);
+  const [carregandoMembros, setCarregandoMembros] = useState(false);
+  const [erroMembros, setErroMembros] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -215,6 +221,25 @@ function ConteudoPerfil({ onEditar }: { onEditar?: () => void }) {
     } finally {
       setSaindoId(null);
     }
+  }
+
+  async function abrirMembros(clube: ClubeDoUsuarioDto) {
+    setClubeAberto(clube);
+    setMembros([]);
+    setErroMembros(false);
+    setCarregandoMembros(true);
+    try {
+      const resultado = await obterMembrosDoClube(clube.id);
+      setMembros(resultado);
+    } catch {
+      setErroMembros(true);
+    } finally {
+      setCarregandoMembros(false);
+    }
+  }
+
+  function fecharMembros() {
+    setClubeAberto(null);
   }
 
   if (isPending) {
@@ -300,62 +325,83 @@ function ConteudoPerfil({ onEditar }: { onEditar?: () => void }) {
             Voce ainda nao participa de nenhum clube.
           </p>
         ) : (
-          <ul className="divide-y divide-black/10 rounded-lg border border-black/10 bg-white">
+          <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {clubes.map((clube) => (
               <li
                 key={clube.id}
-                className="flex items-center gap-3 px-4 py-3"
+                className="flex flex-col gap-3 overflow-hidden rounded-lg border border-black/10 bg-white p-3"
               >
-                <button
-                  type="button"
-                  disabled={saindoId === clube.id}
-                  onClick={() =>
-                    setClubeParaSair({ id: clube.id, nome: clube.nome })
-                  }
-                  title="Sair do clube"
-                  aria-label={`Sair do clube ${clube.nome}`}
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50"
-                >
-                  {saindoId === clube.id ? (
-                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
-                  ) : (
-                    <svg
-                      viewBox="0 0 24 24"
-                      className="h-4 w-4"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M3 6h18" />
-                      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                      <path d="M10 11v6M14 11v6" />
-                    </svg>
-                  )}
-                </button>
-                <ImagemClube
-                  src={clube.imagem}
-                  alt={`Imagem do clube ${clube.nome}`}
-                  className="h-11 w-11 shrink-0 rounded-md object-cover"
-                />
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-black">
-                      {clube.nome}
+                <div className="flex items-center gap-3">
+                  <ImagemClube
+                    src={clube.imagem}
+                    alt={`Imagem do clube ${clube.nome}`}
+                    className="h-14 w-14 shrink-0 rounded-md object-cover"
+                  />
+                  <span className="min-w-0 flex-1 truncate text-lg font-semibold text-black">
+                    {clube.nome}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    title="Você participa deste clube"
+                    className="rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700"
+                  >
+                    Você participa
+                  </span>
+                  {(clube.papel === "dono" || clube.papel === "membro") && (
+                    <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                      {clube.papel}
                     </span>
-                    {(clube.papel === "dono" || clube.papel === "membro") && (
-                      <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-                        {clube.papel}
-                      </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => abrirMembros(clube)}
+                    title="Ver membros do clube"
+                    className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                  >
+                    {clube.membros} membro(s)
+                  </button>
+                  <button
+                    type="button"
+                    disabled={saindoId === clube.id}
+                    onClick={() =>
+                      setClubeParaSair({ id: clube.id, nome: clube.nome })
+                    }
+                    title="Sair do clube"
+                    aria-label={`Sair do clube ${clube.nome}`}
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                  >
+                    {saindoId === clube.id ? (
+                      <span className="h-3 w-3 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
+                    ) : (
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M3 6h18" />
+                        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                        <path d="M10 11v6M14 11v6" />
+                      </svg>
                     )}
-                  </div>
-                  <p className="text-sm text-black/60">
-                    {clube.genero ?? "Sem genero"} ·{" "}
-                    {clube.local ?? "Local a combinar"} · {clube.membros}{" "}
-                    membro(s)
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <p className="text-sm text-black/70">
+                    {clube.descricao || "Sem descrição."}
                   </p>
+                  <div className="flex flex-col gap-1 text-sm text-black/60">
+                    <span>Gênero: {clube.genero ?? "Sem gênero"}</span>
+                    <span>Local: {clube.local ?? "a combinar"}</span>
+                    <span>Dono: {clube.dono_nome ?? "—"}</span>
+                  </div>
                   {clube.link && (
                     <a
                       href={clube.link}
@@ -366,12 +412,95 @@ function ConteudoPerfil({ onEditar }: { onEditar?: () => void }) {
                       {rotuloLink(clube.link)}
                     </a>
                   )}
+                  <span className="text-xs text-black/40">
+                    Criado em {formatarData(clube.criadoEm)}
+                  </span>
                 </div>
               </li>
             ))}
           </ul>
         )}
       </div>
+
+      {clubeAberto && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Membros de ${clubeAberto.nome}`}
+        >
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={fecharMembros}
+          />
+          <div className="relative flex max-h-full w-full max-w-md flex-col rounded-2xl bg-white p-6 shadow-xl">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <h3 className="text-lg font-semibold text-black">
+                  {clubeAberto.nome}
+                </h3>
+                <p className="text-sm text-black/60">
+                  {clubeAberto.membros} membro(s)
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={fecharMembros}
+                aria-label="Fechar"
+                className="rounded-md p-2 text-black hover:bg-blue-50"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-5 w-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                >
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mt-4 overflow-y-auto">
+              {carregandoMembros ? (
+                <p className="text-sm text-black/50">Carregando membros...</p>
+              ) : erroMembros ? (
+                <p className="text-sm text-red-600">
+                  Erro ao carregar os membros.
+                </p>
+              ) : membros.length === 0 ? (
+                <p className="text-sm text-black/50">
+                  Este clube ainda não possui membros.
+                </p>
+              ) : (
+                <ul className="divide-y divide-black/10 rounded-lg border border-black/10">
+                  {membros.map((membro) => (
+                    <li
+                      key={membro.id}
+                      className="flex items-center justify-between gap-4 px-4 py-3"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <ImagemUsuario
+                          src={membro.imagem}
+                          alt={`Foto de ${membro.nome}`}
+                          className="h-8 w-8 shrink-0 rounded-full object-cover"
+                        />
+                        <span className="font-medium text-black">
+                          {membro.nome}
+                        </span>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                        {membro.papel}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <ModalConfirmacao
         aberto={clubeParaSair !== null}
