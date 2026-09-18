@@ -512,71 +512,95 @@ function ConteudoClubes() {
           {clubes.map((clube) => (
             <li
               key={clube.id}
-              className="flex gap-3 overflow-hidden rounded-lg border border-black/10 bg-white p-3"
+              className="flex flex-col gap-3 overflow-hidden rounded-lg border border-black/10 bg-white p-3"
             >
-              <ImagemClube
-                src={clube.imagem}
-                alt={`Imagem do clube ${clube.nome}`}
-                className="h-24 w-24 shrink-0 self-start rounded-md object-cover"
-              />
-              <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-lg font-semibold text-black">
+              <div className="flex items-center gap-3">
+                <ImagemClube
+                  src={clube.imagem}
+                  alt={`Imagem do clube ${clube.nome}`}
+                  className="h-14 w-14 shrink-0 rounded-md object-cover"
+                />
+                <span className="min-w-0 flex-1 truncate text-lg font-semibold text-black">
                   {clube.nome}
                 </span>
-                <div className="flex shrink-0 items-center gap-2">
-                  {clube.sou_membro ? (
-                    <span
-                      title="Você participa deste clube"
-                      className="rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700"
-                    >
-                      Você participa
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={entrandoId === clube.id}
-                      onClick={() => setClubeParaEntrar(clube)}
-                      title="Participar deste clube"
-                      className="flex h-7 w-7 items-center justify-center rounded-full border border-blue-200 text-lg font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
-                    >
-                      {entrandoId === clube.id ? (
-                        <span className="h-3 w-3 animate-spin rounded-full border-2 border-blue-700 border-t-transparent" />
-                      ) : (
-                        <svg
-                          viewBox="0 0 24 24"
-                          className="h-4 w-4"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth={2.5}
-                          strokeLinecap="round"
-                        >
-                          <path d="M12 5v14M5 12h14" />
-                        </svg>
-                      )}
-                    </button>
-                  )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {clube.sou_membro ? (
+                  <span
+                    title="Você participa deste clube"
+                    className="rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700"
+                  >
+                    Você participa
+                  </span>
+                ) : (
                   <button
                     type="button"
-                    onClick={() => abrirMembros(clube)}
-                    title="Ver membros do clube"
-                    className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                    disabled={entrandoId === clube.id}
+                    onClick={() => setClubeParaEntrar(clube)}
+                    title="Participar deste clube"
+                    className="flex h-7 items-center gap-1 rounded-full border border-blue-200 px-2 text-sm font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
                   >
-                    {clube.membros} membro(s)
-                  </button>
-                  {administrador && (
-                    <span
-                      title="Ação exclusiva de administrador"
-                      className="flex items-center gap-1"
-                    >
-                      <ChaveIcon className="h-4 w-4 text-amber-600" />
-                      <button
-                        type="button"
-                        onClick={() => setClubeParaEditar(clube)}
-                        aria-label={`Alterar o cadastro do clube ${clube.nome}`}
-                        title="Alterar cadastro do clube"
-                        className="flex h-7 w-7 items-center justify-center rounded-full border border-blue-200 text-blue-700 hover:bg-blue-50"
+                    {entrandoId === clube.id ? (
+                      <span className="h-3 w-3 animate-spin rounded-full border-2 border-blue-700 border-t-transparent" />
+                    ) : (
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2.5}
+                        strokeLinecap="round"
                       >
+                        <path d="M12 5v14M5 12h14" />
+                      </svg>
+                    )}
+                    Participar
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => abrirMembros(clube)}
+                  title="Ver membros do clube"
+                  className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                >
+                  {clube.membros} membro(s)
+                </button>
+                {administrador && (
+                  <span
+                    title="Ação exclusiva de administrador"
+                    className="flex items-center gap-1"
+                  >
+                    <ChaveIcon className="h-4 w-4 text-amber-600" />
+                    <button
+                      type="button"
+                      onClick={() => setClubeParaEditar(clube)}
+                      aria-label={`Alterar o cadastro do clube ${clube.nome}`}
+                      title="Alterar cadastro do clube"
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-blue-200 text-blue-700 hover:bg-blue-50"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={excluindoId === clube.id}
+                      onClick={() => setClubeParaExcluir(clube)}
+                      aria-label={`Excluir o clube ${clube.nome}`}
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      {excluindoId === clube.id ? (
+                        <span className="h-3 w-3 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
+                      ) : (
                         <svg
                           viewBox="0 0 24 24"
                           className="h-4 w-4"
@@ -586,48 +610,26 @@ function ConteudoClubes() {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                         >
-                          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                          <path d="M3 6h18" />
+                          <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                          <path d="M10 11v6M14 11v6" />
                         </svg>
-                      </button>
-                      <button
-                        type="button"
-                        disabled={excluindoId === clube.id}
-                        onClick={() => setClubeParaExcluir(clube)}
-                        aria-label={`Excluir o clube ${clube.nome}`}
-                        className="flex h-7 w-7 items-center justify-center rounded-full border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50"
-                      >
-                        {excluindoId === clube.id ? (
-                          <span className="h-3 w-3 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
-                        ) : (
-                          <svg
-                            viewBox="0 0 24 24"
-                            className="h-4 w-4"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth={2}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M3 6h18" />
-                            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                            <path d="M10 11v6M14 11v6" />
-                          </svg>
-                        )}
-                      </button>
-                    </span>
-                  )}
+                      )}
+                    </button>
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <p className="text-sm text-black/70">
+                  {clube.descricao || "Sem descrição."}
+                </p>
+                <div className="flex flex-col gap-1 text-sm text-black/60">
+                  <span>Gênero: {clube.genero ?? "Sem gênero"}</span>
+                  <span>Local: {clube.local ?? "a combinar"}</span>
+                  <span>Dono: {clube.dono_nome ?? "—"}</span>
                 </div>
-              </div>
-              <p className="text-sm text-black/70">
-                {clube.descricao || "Sem descrição."}
-              </p>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-black/60">
-                <span>{clube.genero ?? "Sem gênero"}</span>
-                <span>Local: {clube.local ?? "a combinar"}</span>
-                <span>Dono: {clube.dono_nome ?? "—"}</span>
-              </div>
-              <div className="flex items-center justify-between gap-4">
                 <a
                   href={clube.link ?? undefined}
                   target="_blank"
@@ -639,7 +641,6 @@ function ConteudoClubes() {
                 <span className="text-xs text-black/40">
                   Criado em {formatarData(clube.criadoEm)}
                 </span>
-              </div>
               </div>
             </li>
           ))}
