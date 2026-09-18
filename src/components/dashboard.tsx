@@ -1775,24 +1775,30 @@ function ConteudoSobre() {
           </p>
         </div>
         {administrador && !editando && (
-          <button
-            type="button"
-            onClick={comecarEdicao}
-            className="flex shrink-0 items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+          <span
+            title="Ação exclusiva de administrador"
+            className="flex items-center gap-1"
           >
-            <svg
-              viewBox="0 0 24 24"
-              className="h-3.5 w-3.5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
+            <ChaveIcon className="h-4 w-4 text-amber-600" />
+            <button
+              type="button"
+              onClick={comecarEdicao}
+              className="flex shrink-0 items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
             >
-              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-            </svg>
-            Editar conteúdo
-          </button>
+              <svg
+                viewBox="0 0 24 24"
+                className="h-3.5 w-3.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+              </svg>
+              Editar conteúdo
+            </button>
+          </span>
         )}
       </div>
 
