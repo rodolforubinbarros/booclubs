@@ -1266,6 +1266,7 @@ function ConteudoEditarPerfil({ onVoltar }: { onVoltar?: () => void }) {
   const { data, isPending } = useSession();
   const user = data?.user;
   const [nome, setNome] = useState(user?.name ?? "");
+  const [email, setEmail] = useState(user?.email ?? "");
   const [bio, setBio] = useState(user?.bio ?? "");
   const [temaFavorito, setTemaFavorito] = useState(user?.temaFavorito ?? "");
   const [autorFavorito, setAutorFavorito] = useState(
@@ -1284,6 +1285,7 @@ function ConteudoEditarPerfil({ onVoltar }: { onVoltar?: () => void }) {
   if (user !== usuarioSincronizado) {
     setUsuarioSincronizado(user);
     setNome(user?.name ?? "");
+    setEmail(user?.email ?? "");
     setBio(user?.bio ?? "");
     setTemaFavorito(user?.temaFavorito ?? "");
     setAutorFavorito(user?.autorFavorito ?? "");
@@ -1298,6 +1300,17 @@ function ConteudoEditarPerfil({ onVoltar }: { onVoltar?: () => void }) {
       setEstado("erro");
       return;
     }
+    const novoEmail = email.trim();
+    if (!novoEmail) {
+      setErro("Informe um e-mail.");
+      setEstado("erro");
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(novoEmail)) {
+      setErro("Informe um e-mail válido.");
+      setEstado("erro");
+      return;
+    }
     setErro("");
     setConfirmarSalvar(true);
   }
@@ -1306,17 +1319,38 @@ function ConteudoEditarPerfil({ onVoltar }: { onVoltar?: () => void }) {
     setConfirmarSalvar(false);
     setEstado("enviando");
     setErro("");
+    const novoEmail = email.trim();
     try {
-      const { error } = await authClient.updateUser({
+      if (novoEmail.toLowerCase() !== (user?.email ?? "").toLowerCase()) {
+        const { error } = await authClient.changeEmail({ newEmail: novoEmail });
+        if (error) {
+          setErro(
+            error.status === 400 && /email.*same/i.test(error.message ?? "")
+              ? "O novo e-mail deve ser diferente do atual."
+              : `Erro ao alterar o e-mail (${error.status ?? "?"}): ${error.message ?? error.code ?? "erro interno"}`,
+          );
+          setEstado("erro");
+          return;
+        }
+        const sessao = await authClient.getSession();
+        if (
+          sessao.data?.user.email.toLowerCase() !== novoEmail.toLowerCase()
+        ) {
+          setErro("Este e-mail já está em uso por outra conta.");
+          setEstado("erro");
+          return;
+        }
+      }
+      const { error: errorPerfil } = await authClient.updateUser({
         name: nome.trim(),
         bio: bio.trim(),
         temaFavorito: temaFavorito.trim(),
         autorFavorito: autorFavorito.trim(),
         livroIndicado: livroIndicado.trim(),
       });
-      if (error) {
+      if (errorPerfil) {
         setErro(
-          `Erro ao salvar (${error.status ?? "?"}): ${error.message ?? error.code ?? "erro interno"}`,
+          `Erro ao salvar (${errorPerfil.status ?? "?"}): ${errorPerfil.message ?? errorPerfil.code ?? "erro interno"}`,
         );
         setEstado("erro");
         return;
@@ -1394,16 +1428,20 @@ function ConteudoEditarPerfil({ onVoltar }: { onVoltar?: () => void }) {
 
         <div className="flex flex-col gap-1">
           <label htmlFor="email" className="text-sm font-medium text-black">
-            E-mail
+            E-mail *
           </label>
           <input
             id="email"
+            name="email"
             type="email"
-            value={user.email}
-            disabled
-            readOnly
-            className="rounded-md border border-black/15 bg-black/5 px-3 py-2 text-sm text-black/60 focus:outline-none"
+            required
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            className="rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
           />
+          <p className="text-xs text-black/50">
+            Use o novo e-mail na próxima vez que entrar.
+          </p>
         </div>
 
         <div className="flex flex-col gap-1">
