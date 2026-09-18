@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
 import { AuthButtons } from "@/components/auth-buttons";
-import { Dashboard } from "@/components/dashboard";
+import { Dashboard, ConteudoSobre } from "@/components/dashboard";
 import { UserStatus } from "@/components/user-status";
 
 export function App() {
@@ -23,26 +23,27 @@ export function App() {
   }
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-10 px-4 text-center">
-      <div className="w-full max-w-sm rounded-2xl border border-black/10 bg-white p-8 shadow-sm">
-        <div className="flex flex-col items-center gap-2">
-          <Link href="/" className="flex flex-col items-center gap-2" aria-label="Ir para a página inicial">
-            <Image
-              src="/booclubs_logo.png"
-              alt="BooClubs"
-              width={1377}
-              height={1438}
-              className="h-20 w-auto sm:h-24"
-              priority
-            />
-            <h1 className="font-boo text-5xl font-bold tracking-tight text-blue-600 sm:text-6xl">
-              BooClubs
-            </h1>
-          </Link>
-        </div>
-        <div className="mt-6">
-          <AuthButtons />
-        </div>
+    <main className="flex flex-1 flex-col items-center gap-10 px-4 py-10 text-center">
+      <div className="flex flex-col items-center gap-2">
+        <Link href="/" className="flex flex-col items-center gap-2" aria-label="Ir para a página inicial">
+          <Image
+            src="/booclubs_logo.png"
+            alt="BooClubs"
+            width={1377}
+            height={1438}
+            className="h-20 w-auto sm:h-24"
+            priority
+          />
+          <h1 className="font-boo text-5xl font-bold tracking-tight text-blue-600 sm:text-6xl">
+            BooClubs
+          </h1>
+        </Link>
+      </div>
+      <div className="w-full max-w-2xl text-left">
+        <ConteudoSobre />
+      </div>
+      <div className="mt-2">
+        <AuthButtons />
       </div>
       <UserStatus />
     </main>

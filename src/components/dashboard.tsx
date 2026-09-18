@@ -39,7 +39,7 @@ import {
 
 type MenuKey =
   | "perfil"
-  | "fantasminhas"
+  | "fantasmas"
   | "patota"
   | "clubes"
   | "cadastrar"
@@ -48,7 +48,7 @@ type MenuKey =
 
 const MENU_PRINCIPAL: { key: MenuKey; label: string }[] = [
   { key: "perfil", label: "Meu Perfil" },
-  { key: "fantasminhas", label: "Fantasminhas" },
+  { key: "fantasmas", label: "Fantasmas" },
   { key: "patota", label: "Minha Patota" },
   { key: "clubes", label: "Clubes de Leitura" },
 ];
@@ -797,6 +797,22 @@ function ModalPerfilUsuario({
   onFechar: () => void;
   rodape?: ReactNode;
 }) {
+  const [clubes, setClubes] = useState<ClubeDoUsuarioDto[] | null>(null);
+
+  useEffect(() => {
+    let ativo = true;
+    obterClubesDoUsuario(usuario.id)
+      .then((resultado) => {
+        if (ativo) setClubes(resultado);
+      })
+      .catch(() => {
+        if (ativo) setClubes([]);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [usuario.id]);
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -868,13 +884,44 @@ function ModalPerfilUsuario({
           </div>
         </div>
 
+        <div className="mt-4 flex flex-col gap-2">
+          <h4 className="text-sm font-semibold text-black">
+            Clubes de leitura
+          </h4>
+          {clubes === null ? (
+            <p className="text-sm text-black/50">Carregando clubes...</p>
+          ) : clubes.length === 0 ? (
+            <p className="text-sm text-black/60">
+              {usuario.name} ainda não participa de nenhum clube.
+            </p>
+          ) : (
+            <ul className="flex max-h-40 flex-col gap-1.5 overflow-y-auto rounded-lg border border-black/10 px-3 py-2">
+              {clubes.map((clube) => (
+                <li key={clube.id} className="flex items-center gap-2">
+                  <ImagemClube
+                    src={clube.imagem}
+                    alt={`Imagem do clube ${clube.nome}`}
+                    className="h-7 w-7 shrink-0 rounded object-cover"
+                  />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-black">
+                    {clube.nome}
+                  </span>
+                  <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                    {clube.papel}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         {rodape && <div className="mt-4">{rodape}</div>}
       </div>
     </div>
   );
 }
 
-function ConteudoFantasminhas() {
+function ConteudoFantasmas() {
   const { data: sessao } = useSession();
   const sessaoUserId = sessao?.user?.id;
   const [busca, setBusca] = useState("");
@@ -955,7 +1002,7 @@ function ConteudoFantasminhas() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <h2 className="text-2xl font-bold tracking-tight">Fantasminhas</h2>
+        <h2 className="text-2xl font-bold tracking-tight">Fantasmas</h2>
         <p className="text-sm text-black/60">
           Busque leitores por nome, biografia, tema favorito, autor(a) favorito
           ou livro que indica.
@@ -1205,7 +1252,7 @@ function ConteudoPatota() {
         <p className="text-sm text-black/50">Carregando amigos...</p>
       ) : amigos.length === 0 ? (
         <p className="text-sm text-black/50">
-          Você ainda não tem amigos. Busque leitores em Fantasminhas e
+          Você ainda não tem amigos. Busque leitores em Fantasmas e
           adicione-os à sua patota.
         </p>
       ) : (
@@ -1707,7 +1754,7 @@ function ConteudoEditarPerfil({ onVoltar }: { onVoltar?: () => void }) {
   );
 }
 
-function ConteudoSobre() {
+export function ConteudoSobre() {
   const administrador = useAdministrador();
   const [conteudo, setConteudo] = useState<string | null>(null);
   const [rascunho, setRascunho] = useState("");
@@ -1770,9 +1817,7 @@ function ConteudoSobre() {
           <h2 className="text-2xl font-bold tracking-tight">
             Sobre o BooClubs
           </h2>
-          <p className="text-sm text-black/60">
-            Conheça a história e o propósito do BooClubs.
-          </p>
+          
         </div>
         {administrador && !editando && (
           <span
@@ -2037,7 +2082,7 @@ function ConteudoCadastro({ onCriado }: { onCriado?: () => void }) {
 
 const CONTEUDO: Record<Exclude<MenuKey, "cadastrar" | "editar-perfil">, ReactNode> = {
   perfil: <ConteudoPerfil />,
-  fantasminhas: <ConteudoFantasminhas />,
+  fantasmas: <ConteudoFantasmas />,
   patota: <ConteudoPatota />,
   clubes: <ConteudoClubes />,
   sobre: <ConteudoSobre />,
@@ -2088,7 +2133,7 @@ function Sidebar({
       <div className="flex items-center justify-center gap-2 px-2 pb-6">
         <Link
           href="/"
-          onClick={() => onSelect("perfil")}
+          onClick={() => onSelect("sobre")}
           className="flex items-center gap-2"
           aria-label="Ir para a página inicial"
         >
@@ -2160,7 +2205,7 @@ function Sidebar({
 }
 
 export function Dashboard() {
-  const [active, setActive] = useState<MenuKey>("perfil");
+  const [active, setActive] = useState<MenuKey>("sobre");
   const [menuOpen, setMenuOpen] = useState(false);
   const administrador = useAdministrador();
 
@@ -2175,7 +2220,7 @@ export function Dashboard() {
         <div className="flex items-center gap-2">
           <Link
             href="/"
-            onClick={() => select("perfil")}
+            onClick={() => select("sobre")}
             className="flex items-center gap-2"
             aria-label="Ir para a página inicial"
           >
