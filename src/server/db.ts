@@ -307,6 +307,26 @@ export async function saoAmigos(
   return linha?.existe ?? false;
 }
 
+export async function obterConteudoSobre(): Promise<string> {
+  const [linha] = await sql<{ conteudo: string }[]>`
+    SELECT conteudo FROM sobre WHERE id = 'sobre'
+  `;
+  return (
+    linha?.conteudo ??
+    "Em breve, você encontrará aqui a história do BooClubs."
+  );
+}
+
+export async function salvarConteudoSobre(conteudo: string) {
+  return sql`
+    INSERT INTO sobre (id, conteudo, atualizado_em)
+    VALUES ('sobre', ${conteudo}, CURRENT_TIMESTAMP)
+    ON CONFLICT (id) DO UPDATE
+    SET conteudo = EXCLUDED.conteudo,
+        atualizado_em = CURRENT_TIMESTAMP
+  `;
+}
+
 export type Amigo = {
   id: string;
   nome: string;

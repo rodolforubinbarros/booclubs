@@ -15,9 +15,11 @@ import {
   listarMembrosDoClube,
   listarUsuarios,
   listarUsuariosPorBusca,
+  obterConteudoSobre,
   obterPapel,
   removerAmizade,
   removerMembro,
+  salvarConteudoSobre,
   transferirDono,
   type Amigo,
   type ClubeDoUsuario,
@@ -289,5 +291,34 @@ export async function desfazerAmizade(
   } catch (erro) {
     console.error("[desfazerAmizade]", erro);
     return { ok: false, erro: "Erro inesperado ao desfazer a amizade." };
+  }
+}
+
+export async function obterSobre(): Promise<string> {
+  return obterConteudoSobre();
+}
+
+export async function atualizarSobre(
+  conteudo: string,
+): Promise<{ ok: boolean; erro?: string }> {
+  try {
+    if (!(await souAdministrador())) {
+      return { ok: false, erro: "Sem permissão para editar este conteúdo." };
+    }
+    const texto = conteudo.trim();
+    if (!texto) {
+      return { ok: false, erro: "O conteúdo não pode ficar vazio." };
+    }
+    if (texto.length > 10000) {
+      return {
+        ok: false,
+        erro: "O conteúdo excede o limite de 10.000 caracteres.",
+      };
+    }
+    await salvarConteudoSobre(texto);
+    return { ok: true };
+  } catch (erro) {
+    console.error("[atualizarSobre]", erro);
+    return { ok: false, erro: "Erro inesperado ao salvar o conteúdo." };
   }
 }
