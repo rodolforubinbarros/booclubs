@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
 import { AuthButtons } from "@/components/auth-buttons";
-import { Dashboard, ConteudoSobre } from "@/components/dashboard";
+import { Dashboard } from "@/components/dashboard";
 import { UserStatus } from "@/components/user-status";
 
 export function App() {
@@ -23,7 +23,7 @@ export function App() {
   }
 
   return (
-    <main className="flex flex-1 flex-col items-center gap-10 px-4 py-10 text-center">
+    <main className="flex min-h-svh flex-1 flex-col items-center justify-center gap-10 px-4 py-10 text-center">
       <div className="flex flex-col items-center gap-2">
         <Link href="/" className="flex flex-col items-center gap-2" aria-label="Ir para a página inicial">
           <Image
@@ -38,9 +38,6 @@ export function App() {
             BooClubs
           </h1>
         </Link>
-      </div>
-      <div className="w-full max-w-2xl text-left">
-        <ConteudoSobre />
       </div>
       <div className="mt-2">
         <AuthButtons />

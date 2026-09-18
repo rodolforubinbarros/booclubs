@@ -7,6 +7,7 @@ import {
   adicionarAmizade,
   adicionarMembro,
   atualizarClube,
+  atualizarUsuario,
   criarClubeComDono,
   criarTeste,
   deletarClube,
@@ -99,6 +100,7 @@ export async function obterUsuarios(): Promise<UsuarioDto[]> {
 export type UsuarioListaDto = {
   id: string;
   name: string;
+  email: string;
   image: string | null;
   bio: string | null;
   temaFavorito: string | null;
@@ -113,6 +115,7 @@ export async function obterUsuariosLista(): Promise<UsuarioListaDto[]> {
   return (await listarUsuariosLista()).map((usuario: UsuarioLista) => ({
     id: usuario.id,
     name: usuario.name,
+    email: usuario.email,
     image: usuario.image,
     bio: usuario.bio,
     temaFavorito: usuario.temaFavorito,
@@ -276,6 +279,67 @@ export async function editarClube(
   } catch (erro) {
     console.error("[editarClube]", erro);
     return { erro: "Erro inesperado ao editar o clube. Tente novamente." };
+  }
+}
+
+export async function editarUsuario(
+  userId: string,
+  dados: {
+    nome: string;
+    email: string;
+    bio: string;
+    temaFavorito: string;
+    autorFavorito: string;
+    livroIndicado: string;
+    imagem: string | null;
+  },
+): Promise<{ ok?: boolean; erro?: string }> {
+  try {
+    if (!(await souAdministrador())) {
+      return { ok: false, erro: "Sem permissão para editar usuários." };
+    }
+    const nome = dados.nome.trim();
+    if (!nome) return { erro: "Informe um nome." };
+    const email = dados.email.trim();
+    if (!email) return { erro: "Informe um e-mail." };
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      return { erro: "Informe um e-mail válido." };
+    }
+    const bio = dados.bio.trim() || null;
+    const temaFavorito = dados.temaFavorito.trim() || null;
+    const autorFavorito = dados.autorFavorito.trim() || null;
+    const livroIndicado = dados.livroIndicado.trim() || null;
+    let imagem: string | null = null;
+    if (dados.imagem) {
+      if (!dados.imagem.startsWith("data:image/")) {
+        return { erro: "Imagem inválida." };
+      }
+      if (dados.imagem.length > 2 * 1024 * 1024) {
+        return { erro: "Imagem muito grande. Envie uma imagem de até 1 MB." };
+      }
+      imagem = dados.imagem;
+    }
+    await atualizarUsuario(userId, {
+      name: nome,
+      email,
+      bio,
+      temaFavorito,
+      autorFavorito,
+      livroIndicado,
+      imagem,
+    });
+    return { ok: true };
+  } catch (erro) {
+    console.error("[editarUsuario]", erro);
+    if (
+      erro &&
+      typeof erro === "object" &&
+      "code" in erro &&
+      (erro as { code: string }).code === "23505"
+    ) {
+      return { erro: "Este e-mail já está em uso por outra conta." };
+    }
+    return { erro: "Erro inesperado ao editar o usuário. Tente novamente." };
   }
 }
 

@@ -22,6 +22,7 @@ import {
   criarClube,
   desfazerAmizade,
   editarClube,
+  editarUsuario,
   entrarNoClube,
   excluirClube,
   obterAmigos,
@@ -1076,6 +1077,352 @@ function ModalEditarClube({
         aberto={confirmarSalvar}
         titulo="Salvar alterações"
         mensagem={`Você tem certeza que deseja salvar as alterações no cadastro do clube "${clube.nome}"?`}
+        confirmando={estado === "enviando"}
+        rotuloConfirmar="Sim, salvar"
+        onConfirmar={salvar}
+        onCancelar={() => setConfirmarSalvar(false)}
+      />
+    </div>
+  );
+}
+
+function ModalEditarUsuario({
+  usuario,
+  onFechar,
+  onSalvo,
+}: {
+  usuario: UsuarioListaDto;
+  onFechar: () => void;
+  onSalvo: (usuario: UsuarioListaDto) => void;
+}) {
+  const [nome, setNome] = useState(usuario.name);
+  const [email, setEmail] = useState(usuario.email);
+  const [bio, setBio] = useState(usuario.bio ?? "");
+  const [temaFavorito, setTemaFavorito] = useState(usuario.temaFavorito ?? "");
+  const [autorFavorito, setAutorFavorito] = useState(
+    usuario.autorFavorito ?? "",
+  );
+  const [livroIndicado, setLivroIndicado] = useState(
+    usuario.livroIndicado ?? "",
+  );
+  const [imagemSelecionada, setImagemSelecionada] = useState<string | null>(
+    null,
+  );
+  const [erroImagem, setErroImagem] = useState("");
+  const [processandoImagem, setProcessandoImagem] = useState(false);
+  const inputImagemRef = useRef<HTMLInputElement>(null);
+  const [estado, setEstado] = useState<"idle" | "enviando" | "erro">("idle");
+  const [erro, setErro] = useState("");
+  const [confirmarSalvar, setConfirmarSalvar] = useState(false);
+
+  async function aoEscolherImagem(event: ChangeEvent<HTMLInputElement>) {
+    const arquivo = event.target.files?.[0];
+    event.target.value = "";
+    setErroImagem("");
+    setImagemSelecionada(null);
+    if (!arquivo) return;
+    if (!arquivo.type.startsWith("image/")) {
+      setErroImagem("Escolha um arquivo de imagem válido.");
+      return;
+    }
+    if (arquivo.size > LIMITE_IMAGEM_PERFIL) {
+      setErroImagem("Por enquanto só é possível enviar imagens de até 1 MB.");
+      return;
+    }
+    setProcessandoImagem(true);
+    try {
+      setImagemSelecionada(await comprimirImagem(arquivo));
+    } catch {
+      setErroImagem("Não foi possível processar a imagem. Tente novamente.");
+    } finally {
+      setProcessandoImagem(false);
+    }
+  }
+
+  function submeter() {
+    setErro("");
+    setEstado("idle");
+    setConfirmarSalvar(true);
+  }
+
+  async function salvar() {
+    setConfirmarSalvar(false);
+    setEstado("enviando");
+    setErro("");
+    try {
+      const resultado = await editarUsuario(usuario.id, {
+        nome: nome.trim(),
+        email: email.trim(),
+        bio: bio.trim(),
+        temaFavorito: temaFavorito.trim(),
+        autorFavorito: autorFavorito.trim(),
+        livroIndicado: livroIndicado.trim(),
+        imagem: imagemSelecionada ?? usuario.image,
+      });
+      if (resultado?.erro) {
+        setErro(resultado.erro);
+        setEstado("erro");
+        return;
+      }
+      onSalvo({
+        ...usuario,
+        name: nome.trim(),
+        email: email.trim(),
+        bio: bio.trim() || null,
+        temaFavorito: temaFavorito.trim() || null,
+        autorFavorito: autorFavorito.trim() || null,
+        livroIndicado: livroIndicado.trim() || null,
+        image: imagemSelecionada ?? usuario.image,
+      });
+    } catch {
+      setErro("Erro inesperado ao salvar o usuário. Tente novamente.");
+      setEstado("erro");
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Alterar cadastro de ${usuario.name}`}
+    >
+      <div className="absolute inset-0 bg-black/40" onClick={onFechar} />
+      <div className="relative flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+        <div className="flex items-start justify-between gap-4 border-b border-black/10 px-6 py-4">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <h3 className="text-lg font-semibold text-black">
+              Alterar cadastro do usuário
+            </h3>
+            <p className="text-sm text-black/60">{usuario.name}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onFechar}
+            aria-label="Fechar"
+            className="rounded-md p-2 text-black hover:bg-blue-50"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+            >
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </div>
+
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            submeter();
+          }}
+          className="flex-1 overflow-y-auto px-6 py-4"
+        >
+          <fieldset
+            disabled={estado === "enviando"}
+            className="flex flex-col gap-4"
+          >
+            <div className="flex flex-col gap-3 rounded-lg border border-black/10 px-4 py-3">
+              <div className="flex items-center gap-4">
+                <ImagemUsuario
+                  src={imagemSelecionada ?? usuario.image}
+                  alt={`Foto de ${usuario.name}`}
+                  className="h-16 w-16 shrink-0 rounded-full object-cover"
+                />
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="text-sm font-medium text-black">
+                    Foto de perfil
+                  </span>
+                  <span className="text-xs text-black/50">
+                    JPG, PNG ou WebP, de até 1 MB. A imagem é compactada antes
+                    de ser salva.
+                  </span>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  disabled={processandoImagem}
+                  onClick={() => inputImagemRef.current?.click()}
+                  className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {processandoImagem
+                    ? "Processando..."
+                    : imagemSelecionada
+                      ? "Trocar foto"
+                      : "Escolher foto"}
+                </button>
+                {imagemSelecionada && (
+                  <button
+                    type="button"
+                    onClick={() => setImagemSelecionada(null)}
+                    className="rounded-md border border-black/15 px-3 py-1.5 text-sm font-medium text-black hover:bg-blue-50"
+                  >
+                    Manter foto atual
+                  </button>
+                )}
+                <input
+                  ref={inputImagemRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={aoEscolherImagem}
+                />
+              </div>
+              {erroImagem && (
+                <p className="text-sm text-red-600">{erroImagem}</p>
+              )}
+              {imagemSelecionada && (
+                <p className="text-sm text-green-700">
+                  Nova foto selecionada. Ela será salva ao confirmar as
+                  alterações.
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor="editar-usuario-nome"
+                className="text-sm font-medium text-black"
+              >
+                Nome *
+              </label>
+              <input
+                id="editar-usuario-nome"
+                name="nome"
+                type="text"
+                required
+                value={nome}
+                onChange={(event) => setNome(event.target.value)}
+                className="rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor="editar-usuario-email"
+                className="text-sm font-medium text-black"
+              >
+                E-mail *
+              </label>
+              <input
+                id="editar-usuario-email"
+                name="email"
+                type="email"
+                required
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className="rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+              />
+              <p className="text-xs text-black/50">
+                Se alterado, o usuário precisará verificar o novo e-mail.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor="editar-usuario-bio"
+                className="text-sm font-medium text-black"
+              >
+                Bio
+              </label>
+              <textarea
+                id="editar-usuario-bio"
+                name="bio"
+                rows={3}
+                maxLength={500}
+                value={bio}
+                onChange={(event) => setBio(event.target.value)}
+                placeholder="Conte um pouco sobre o usuário..."
+                className="rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+              />
+              <p className="text-xs text-black/50">
+                Até 500 caracteres ({bio.length}/500)
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor="editar-usuario-tema"
+                className="text-sm font-medium text-black"
+              >
+                Tema favorito
+              </label>
+              <input
+                id="editar-usuario-tema"
+                name="temaFavorito"
+                type="text"
+                value={temaFavorito}
+                onChange={(event) => setTemaFavorito(event.target.value)}
+                className="rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor="editar-usuario-autor"
+                className="text-sm font-medium text-black"
+              >
+                Autor(a) favorito
+              </label>
+              <input
+                id="editar-usuario-autor"
+                name="autorFavorito"
+                type="text"
+                value={autorFavorito}
+                onChange={(event) => setAutorFavorito(event.target.value)}
+                className="rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor="editar-usuario-livro"
+                className="text-sm font-medium text-black"
+              >
+                Livro que indica
+              </label>
+              <input
+                id="editar-usuario-livro"
+                name="livroIndicado"
+                type="text"
+                value={livroIndicado}
+                onChange={(event) => setLivroIndicado(event.target.value)}
+                className="rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+              />
+            </div>
+
+            {estado === "erro" && (
+              <p className="text-sm text-red-600">{erro}</p>
+            )}
+
+            <div className="flex items-center gap-2">
+              <button
+                type="submit"
+                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {estado === "enviando" ? "Salvando..." : "Salvar alterações"}
+              </button>
+              <button
+                type="button"
+                onClick={onFechar}
+                className="rounded-md border border-black/15 px-4 py-2 text-sm font-medium text-black hover:bg-blue-50 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+            </div>
+          </fieldset>
+        </form>
+      </div>
+
+      <ModalConfirmacao
+        aberto={confirmarSalvar}
+        titulo="Salvar alterações"
+        mensagem={`Você tem certeza que deseja salvar as alterações no cadastro de "${usuario.name}"?`}
         confirmando={estado === "enviando"}
         rotuloConfirmar="Sim, salvar"
         onConfirmar={salvar}
@@ -2437,6 +2784,8 @@ function ConteudoCadastro({ onCriado }: { onCriado?: () => void }) {
 
 function ConteudoUsuarios() {
   const [usuarios, setUsuarios] = useState<UsuarioListaDto[] | null>(null);
+  const [usuarioParaEditar, setUsuarioParaEditar] =
+    useState<UsuarioListaDto | null>(null);
 
   useEffect(() => {
     let ativo = true;
@@ -2487,11 +2836,37 @@ function ConteudoUsuarios() {
                   <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
                     {usuario.clubes} clube(s)
                   </span>
+                  <span
+                    title="Ação exclusiva de administrador"
+                    className="flex items-center gap-1"
+                  >
+                    <ChaveIcon className="h-4 w-4 text-amber-600" />
+                    <button
+                      type="button"
+                      onClick={() => setUsuarioParaEditar(usuario)}
+                      aria-label={`Alterar o cadastro do usuário ${usuario.name}`}
+                      title="Alterar cadastro do usuário"
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-blue-200 text-blue-700 hover:bg-blue-50"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                      </svg>
+                    </button>
+                  </span>
                 </div>
                 <p className="text-sm text-black/60">
                   {usuario.bio?.trim() || "Sem bio."}
                 </p>
                 <div className="flex flex-col gap-0.5 text-xs text-black/50">
+                  <span className="truncate">{usuario.email}</span>
                   {usuario.temaFavorito?.trim() && (
                     <span>Tema: {usuario.temaFavorito}</span>
                   )}
@@ -2509,6 +2884,22 @@ function ConteudoUsuarios() {
             </li>
           ))}
         </ul>
+      )}
+
+      {usuarioParaEditar && (
+        <ModalEditarUsuario
+          usuario={usuarioParaEditar}
+          onFechar={() => setUsuarioParaEditar(null)}
+          onSalvo={(atualizado) => {
+            setUsuarios(
+              (prev) =>
+                prev?.map((u) =>
+                  u.id === atualizado.id ? atualizado : u,
+                ) ?? prev,
+            );
+            setUsuarioParaEditar(null);
+          }}
+        />
       )}
     </div>
   );

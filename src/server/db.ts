@@ -96,6 +96,7 @@ export async function listarUsuariosPorBusca(
 export type UsuarioLista = {
   id: string;
   name: string;
+  email: string;
   image: string | null;
   bio: string | null;
   temaFavorito: string | null;
@@ -110,6 +111,7 @@ export async function listarUsuariosLista(): Promise<UsuarioLista[]> {
     SELECT
       u.id,
       u.name,
+      u.email,
       u.image,
       u.bio,
       u."temaFavorito",
@@ -280,6 +282,32 @@ export async function atualizarClube(
       link = ${dados.link},
       imagem = ${dados.imagem}
     WHERE id = ${clubeId}
+  `;
+}
+
+export async function atualizarUsuario(
+  userId: string,
+  dados: {
+    name: string;
+    email: string;
+    bio: string | null;
+    temaFavorito: string | null;
+    autorFavorito: string | null;
+    livroIndicado: string | null;
+    imagem: string | null;
+  },
+) {
+  return sql`
+    UPDATE "user" SET
+      name = ${dados.name},
+      email = ${dados.email},
+      "emailVerified" = ("email" = ${dados.email}) AND "emailVerified",
+      bio = ${dados.bio},
+      "temaFavorito" = ${dados.temaFavorito},
+      "autorFavorito" = ${dados.autorFavorito},
+      "livroIndicado" = ${dados.livroIndicado},
+      image = ${dados.imagem}
+    WHERE id = ${userId}
   `;
 }
 
