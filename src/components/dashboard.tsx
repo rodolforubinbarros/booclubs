@@ -3274,32 +3274,30 @@ export function Dashboard() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-      <header className="flex items-center justify-between border-b border-black/10 bg-white px-4 py-3 md:hidden">
-        <div className="flex items-center gap-2">
-          <Link
-            href="/"
-            onClick={() => select("sobre")}
-            className="flex items-center gap-2"
-            aria-label="Ir para a página inicial"
-          >
-            <Image
-              src="/booclubs_logo.png"
-              alt="BooClubs"
-              width={1377}
-              height={1438}
-              className="h-8 w-auto"
-              priority
-            />
-            <span className="font-boo text-xl font-bold tracking-tight text-blue-600">
-              BooClubs
-            </span>
-          </Link>
-        </div>
+      <header className="relative flex items-center justify-center border-b border-black/10 bg-white px-4 py-3 md:hidden">
+        <Link
+          href="/"
+          onClick={() => select("sobre")}
+          className="flex items-center gap-2"
+          aria-label="Ir para a página inicial"
+        >
+          <Image
+            src="/booclubs_logo.png"
+            alt="BooClubs"
+            width={1377}
+            height={1438}
+            className="h-8 w-auto"
+            priority
+          />
+          <span className="font-boo text-xl font-bold tracking-tight text-blue-600">
+            BooClubs
+          </span>
+        </Link>
         <button
           type="button"
           onClick={() => setMenuOpen(true)}
           aria-label="Abrir menu"
-          className="rounded-md p-2 text-black hover:bg-blue-50"
+          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-md p-2 text-black hover:bg-blue-50"
         >
           <svg
             viewBox="0 0 24 24"
