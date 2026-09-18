@@ -227,6 +227,29 @@ export async function criarClubeComDono(dados: {
   });
 }
 
+export async function atualizarClube(
+  clubeId: string,
+  dados: {
+    nome: string;
+    descricao: string | null;
+    genero: string | null;
+    local: string | null;
+    link: string | null;
+    imagem: string | null;
+  },
+) {
+  return sql`
+    UPDATE clubes SET
+      nome = ${dados.nome},
+      descricao = ${dados.descricao},
+      genero = ${dados.genero},
+      local = ${dados.local},
+      link = ${dados.link},
+      imagem = ${dados.imagem}
+    WHERE id = ${clubeId}
+  `;
+}
+
 export async function adicionarMembro(
   clubeId: string,
   userId: string,

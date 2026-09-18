@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import {
   adicionarAmizade,
   adicionarMembro,
+  atualizarClube,
   criarClubeComDono,
   criarTeste,
   deletarClube,
@@ -200,6 +201,52 @@ export async function excluirClube(
   } catch (erro) {
     console.error("[excluirClube]", erro);
     return { ok: false, erro: "Erro inesperado ao excluir o clube." };
+  }
+}
+
+export async function editarClube(
+  clubeId: string,
+  dados: {
+    nome: string;
+    descricao: string;
+    genero: string;
+    local: string;
+    link: string;
+    imagem: string | null;
+  },
+): Promise<{ ok?: boolean; erro?: string }> {
+  try {
+    if (!(await souAdministrador())) {
+      return { ok: false, erro: "Sem permissão para editar clubes." };
+    }
+    const nome = dados.nome.trim();
+    if (!nome) return { erro: "Informe o nome do clube." };
+    const descricao = dados.descricao.trim() || null;
+    const genero = dados.genero.trim() || null;
+    const local = dados.local.trim() || null;
+    const link = dados.link.trim() || null;
+    let imagem: string | null = null;
+    if (dados.imagem) {
+      if (!dados.imagem.startsWith("data:image/")) {
+        return { erro: "Imagem inválida." };
+      }
+      if (dados.imagem.length > 2 * 1024 * 1024) {
+        return { erro: "Imagem muito grande. Envie uma imagem de até 1 MB." };
+      }
+      imagem = dados.imagem;
+    }
+    await atualizarClube(clubeId, {
+      nome,
+      descricao,
+      genero,
+      local,
+      link,
+      imagem,
+    });
+    return { ok: true };
+  } catch (erro) {
+    console.error("[editarClube]", erro);
+    return { erro: "Erro inesperado ao editar o clube. Tente novamente." };
   }
 }
 

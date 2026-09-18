@@ -21,6 +21,7 @@ import {
   atualizarSobre,
   criarClube,
   desfazerAmizade,
+  editarClube,
   entrarNoClube,
   excluirClube,
   obterAmigos,
@@ -385,6 +386,8 @@ function ConteudoClubes() {
     useState<ClubeVisivelDto | null>(null);
   const [clubeParaEntrar, setClubeParaEntrar] =
     useState<ClubeVisivelDto | null>(null);
+  const [clubeParaEditar, setClubeParaEditar] =
+    useState<ClubeVisivelDto | null>(null);
 
   useEffect(() => {
     const temporizador = setTimeout(() => setBuscaDiferida(busca), 400);
@@ -509,14 +512,14 @@ function ConteudoClubes() {
           {clubes.map((clube) => (
             <li
               key={clube.id}
-              className="flex flex-col gap-1 overflow-hidden rounded-lg border border-black/10 bg-white"
+              className="flex gap-3 overflow-hidden rounded-lg border border-black/10 bg-white p-3"
             >
               <ImagemClube
                 src={clube.imagem}
                 alt={`Imagem do clube ${clube.nome}`}
-                className="h-32 w-full object-cover"
+                className="h-24 w-24 shrink-0 self-start rounded-md object-cover"
               />
-              <div className="flex flex-col gap-1 px-4 pb-3 pt-1">
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
               <div className="flex items-center justify-between gap-4">
                 <span className="text-lg font-semibold text-black">
                   {clube.nome}
@@ -567,6 +570,25 @@ function ConteudoClubes() {
                       className="flex items-center gap-1"
                     >
                       <ChaveIcon className="h-4 w-4 text-amber-600" />
+                      <button
+                        type="button"
+                        onClick={() => setClubeParaEditar(clube)}
+                        aria-label={`Alterar o cadastro do clube ${clube.nome}`}
+                        title="Alterar cadastro do clube"
+                        className="flex h-7 w-7 items-center justify-center rounded-full border border-blue-200 text-blue-700 hover:bg-blue-50"
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          className="h-4 w-4"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                        </svg>
+                      </button>
                       <button
                         type="button"
                         disabled={excluindoId === clube.id}
@@ -725,6 +747,334 @@ function ConteudoClubes() {
         rotuloConfirmar="Sim, excluir"
         onConfirmar={() => clubeParaExcluir && excluir(clubeParaExcluir)}
         onCancelar={() => setClubeParaExcluir(null)}
+      />
+      {clubeParaEditar && (
+        <ModalEditarClube
+          clube={clubeParaEditar}
+          onFechar={() => setClubeParaEditar(null)}
+          onSalvo={(atualizado) => {
+            setClubes(
+              (prev) =>
+                prev?.map((c) => (c.id === atualizado.id ? atualizado : c)) ??
+                prev,
+            );
+            setClubeParaEditar(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ModalEditarClube({
+  clube,
+  onFechar,
+  onSalvo,
+}: {
+  clube: ClubeVisivelDto;
+  onFechar: () => void;
+  onSalvo: (clube: ClubeVisivelDto) => void;
+}) {
+  const [nome, setNome] = useState(clube.nome);
+  const [descricao, setDescricao] = useState(clube.descricao ?? "");
+  const [genero, setGenero] = useState(clube.genero ?? "");
+  const [local, setLocal] = useState(clube.local ?? "");
+  const [link, setLink] = useState(clube.link ?? "");
+  const [imagemSelecionada, setImagemSelecionada] = useState<string | null>(
+    null,
+  );
+  const [erroImagem, setErroImagem] = useState("");
+  const [processandoImagem, setProcessandoImagem] = useState(false);
+  const inputImagemRef = useRef<HTMLInputElement>(null);
+  const [estado, setEstado] = useState<"idle" | "enviando" | "erro">("idle");
+  const [erro, setErro] = useState("");
+  const [confirmarSalvar, setConfirmarSalvar] = useState(false);
+
+  async function aoEscolherImagem(event: ChangeEvent<HTMLInputElement>) {
+    const arquivo = event.target.files?.[0];
+    event.target.value = "";
+    setErroImagem("");
+    setImagemSelecionada(null);
+    if (!arquivo) return;
+    if (!arquivo.type.startsWith("image/")) {
+      setErroImagem("Escolha um arquivo de imagem válido.");
+      return;
+    }
+    if (arquivo.size > LIMITE_IMAGEM_PERFIL) {
+      setErroImagem("Por enquanto só é possível enviar imagens de até 1 MB.");
+      return;
+    }
+    setProcessandoImagem(true);
+    try {
+      setImagemSelecionada(await comprimirImagem(arquivo));
+    } catch {
+      setErroImagem("Não foi possível processar a imagem. Tente novamente.");
+    } finally {
+      setProcessandoImagem(false);
+    }
+  }
+
+  function submeter() {
+    setErro("");
+    setEstado("idle");
+    setConfirmarSalvar(true);
+  }
+
+  async function salvar() {
+    setConfirmarSalvar(false);
+    setEstado("enviando");
+    setErro("");
+    try {
+      const resultado = await editarClube(clube.id, {
+        nome: nome.trim(),
+        descricao: descricao.trim(),
+        genero: genero.trim(),
+        local: local.trim(),
+        link: link.trim(),
+        imagem: imagemSelecionada ?? clube.imagem,
+      });
+      if (resultado?.erro) {
+        setErro(resultado.erro);
+        setEstado("erro");
+        return;
+      }
+      onSalvo({
+        ...clube,
+        nome: nome.trim(),
+        descricao: descricao.trim() || null,
+        genero: genero.trim() || null,
+        local: local.trim() || null,
+        link: link.trim() || null,
+        imagem: imagemSelecionada ?? clube.imagem,
+      });
+    } catch {
+      setErro("Erro inesperado ao salvar o clube. Tente novamente.");
+      setEstado("erro");
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Alterar cadastro de ${clube.nome}`}
+    >
+      <div className="absolute inset-0 bg-black/40" onClick={onFechar} />
+      <div className="relative flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+        <div className="flex items-start justify-between gap-4 border-b border-black/10 px-6 py-4">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <h3 className="text-lg font-semibold text-black">
+              Alterar cadastro do clube
+            </h3>
+            <p className="text-sm text-black/60">{clube.nome}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onFechar}
+            aria-label="Fechar"
+            className="rounded-md p-2 text-black hover:bg-blue-50"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+            >
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </div>
+
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            submeter();
+          }}
+          className="flex-1 overflow-y-auto px-6 py-4"
+        >
+          <fieldset disabled={estado === "enviando"} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3 rounded-lg border border-black/10 px-4 py-3">
+              <div className="flex items-center gap-4">
+                <ImagemClube
+                  src={imagemSelecionada ?? clube.imagem}
+                  alt={`Imagem do clube ${clube.nome}`}
+                  className="h-16 w-16 shrink-0 rounded-md object-cover"
+                />
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="text-sm font-medium text-black">
+                    Foto do clube
+                  </span>
+                  <span className="text-xs text-black/50">
+                    JPG, PNG ou WebP, de até 1 MB. A imagem é compactada antes
+                    de ser salva.
+                  </span>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  disabled={processandoImagem}
+                  onClick={() => inputImagemRef.current?.click()}
+                  className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {processandoImagem
+                    ? "Processando..."
+                    : imagemSelecionada
+                      ? "Trocar foto"
+                      : "Escolher foto"}
+                </button>
+                {imagemSelecionada && (
+                  <button
+                    type="button"
+                    onClick={() => setImagemSelecionada(null)}
+                    className="rounded-md border border-black/15 px-3 py-1.5 text-sm font-medium text-black hover:bg-blue-50"
+                  >
+                    Manter foto atual
+                  </button>
+                )}
+                <input
+                  ref={inputImagemRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={aoEscolherImagem}
+                />
+              </div>
+              {erroImagem && (
+                <p className="text-sm text-red-600">{erroImagem}</p>
+              )}
+              {imagemSelecionada && (
+                <p className="text-sm text-green-700">
+                  Nova foto selecionada. Ela será salva ao confirmar as
+                  alterações.
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor="editar-nome"
+                className="text-sm font-medium text-black"
+              >
+                Nome *
+              </label>
+              <input
+                id="editar-nome"
+                name="nome"
+                type="text"
+                required
+                value={nome}
+                onChange={(event) => setNome(event.target.value)}
+                className="rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor="editar-descricao"
+                className="text-sm font-medium text-black"
+              >
+                Descrição *
+              </label>
+              <textarea
+                id="editar-descricao"
+                name="descricao"
+                rows={3}
+                required
+                value={descricao}
+                onChange={(event) => setDescricao(event.target.value)}
+                className="rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor="editar-genero"
+                className="text-sm font-medium text-black"
+              >
+                Gênero / tema *
+              </label>
+              <input
+                id="editar-genero"
+                name="genero"
+                type="text"
+                required
+                value={genero}
+                onChange={(event) => setGenero(event.target.value)}
+                className="rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor="editar-local"
+                className="text-sm font-medium text-black"
+              >
+                Local *
+              </label>
+              <input
+                id="editar-local"
+                name="local"
+                type="text"
+                required
+                value={local}
+                onChange={(event) => setLocal(event.target.value)}
+                className="rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor="editar-link"
+                className="text-sm font-medium text-black"
+              >
+                Link externo
+              </label>
+              <input
+                id="editar-link"
+                name="link"
+                type="url"
+                value={link}
+                onChange={(event) => setLink(event.target.value)}
+                placeholder="https://..."
+                className="rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+              />
+            </div>
+
+            {estado === "erro" && (
+              <p className="text-sm text-red-600">{erro}</p>
+            )}
+
+            <div className="flex items-center gap-2">
+              <button
+                type="submit"
+                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {estado === "enviando" ? "Salvando..." : "Salvar alterações"}
+              </button>
+              <button
+                type="button"
+                onClick={onFechar}
+                className="rounded-md border border-black/15 px-4 py-2 text-sm font-medium text-black hover:bg-blue-50 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+            </div>
+          </fieldset>
+        </form>
+      </div>
+
+      <ModalConfirmacao
+        aberto={confirmarSalvar}
+        titulo="Salvar alterações"
+        mensagem={`Você tem certeza que deseja salvar as alterações no cadastro do clube "${clube.nome}"?`}
+        confirmando={estado === "enviando"}
+        rotuloConfirmar="Sim, salvar"
+        onConfirmar={salvar}
+        onCancelar={() => setConfirmarSalvar(false)}
       />
     </div>
   );
