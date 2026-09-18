@@ -58,6 +58,19 @@ const MENU_PRINCIPAL: { key: MenuKey; label: string }[] = [
   { key: "clubes", label: "Clubes de Leitura" },
 ];
 
+const IMAGEM_PATOTA = "/icones/patota.png";
+
+const CORES_BARRA: Record<MenuKey, { texto: string; fundo: string }> = {
+  perfil: { texto: "text-blue-600", fundo: "bg-blue-100" },
+  fantasmas: { texto: "text-purple-600", fundo: "bg-purple-100" },
+  patota: { texto: "text-emerald-600", fundo: "bg-emerald-100" },
+  clubes: { texto: "text-amber-600", fundo: "bg-amber-100" },
+  cadastrar: { texto: "text-black/60", fundo: "bg-blue-100" },
+  usuarios: { texto: "text-black/60", fundo: "bg-blue-100" },
+  sobre: { texto: "text-black/60", fundo: "bg-blue-100" },
+  "editar-perfil": { texto: "text-black/60", fundo: "bg-blue-100" },
+};
+
 const MENU_CADASTRO: { key: MenuKey; label: string }[] = [
   { key: "cadastrar", label: "Cadastrar Clube de Leitura" },
   { key: "usuarios", label: "Listar Usuários" },
@@ -3030,6 +3043,96 @@ function Sidebar({
   );
 }
 
+function IconeMenu({
+  item,
+  className,
+}: {
+  item: { key: MenuKey; label: string };
+  className: string;
+}) {
+  const comum = {
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 2,
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+    className,
+    "aria-hidden": true,
+  } as const;
+
+  switch (item.key) {
+    case "perfil":
+      return (
+        <svg {...comum}>
+          <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+      );
+    case "fantasmas":
+      return (
+        <svg {...comum}>
+          <path d="M5 21v-12a7 7 0 0 1 14 0v12l-2.33-1.75-2.34 1.75L12 19.25 9.67 21l-2.34-1.75L5 21Z" />
+          <circle cx="9.5" cy="10" r="1.1" fill="currentColor" stroke="none" />
+          <circle cx="14.5" cy="10" r="1.1" fill="currentColor" stroke="none" />
+        </svg>
+      );
+    case "patota":
+      return (
+        <span
+          className={`${className} block bg-current`}
+          style={{
+            maskImage: `url(${IMAGEM_PATOTA})`,
+            maskSize: "contain",
+            maskRepeat: "no-repeat",
+            WebkitMaskImage: `url(${IMAGEM_PATOTA})`,
+            WebkitMaskSize: "contain",
+            WebkitMaskRepeat: "no-repeat",
+          }}
+          aria-hidden="true"
+        />
+      );
+    case "clubes":
+      return (
+        <svg {...comum}>
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
+function BarraInferior({
+  active,
+  onSelect,
+}: {
+  active: MenuKey;
+  onSelect: (key: MenuKey) => void;
+}) {
+  return (
+    <nav className="fixed inset-x-0 bottom-0 z-30 flex items-stretch justify-around gap-1 border-t border-black/10 bg-white px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-1px_6px_rgba(0,0,0,0.08)] md:hidden">
+      {MENU_PRINCIPAL.map((item) => (
+        <button
+          key={item.key}
+          type="button"
+          onClick={() => onSelect(item.key)}
+          aria-label={item.label}
+          title={item.label}
+          className={`flex flex-1 items-center justify-center rounded-xl py-2.5 transition-colors ${
+            active === item.key ? CORES_BARRA[item.key].fundo : ""
+          }`}
+        >
+          <span className={CORES_BARRA[item.key].texto}>
+            <IconeMenu item={item} className="h-6 w-6" />
+          </span>
+        </button>
+      ))}
+    </nav>
+  );
+}
+
 export function Dashboard() {
   const [active, setActive] = useState<MenuKey>("sobre");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -3117,8 +3220,8 @@ export function Dashboard() {
         </div>
       )}
 
-      <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-blue-50">
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8">
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-blue-50 pb-14 md:pb-0">
+        <div className="flex-1 overflow-y-auto p-4 pb-24 sm:p-8 sm:pb-24 md:pb-8">
           {active === "cadastrar" ? (
             <ConteudoCadastro onCriado={() => select("clubes")} />
           ) : active === "editar-perfil" ? (
@@ -3131,6 +3234,8 @@ export function Dashboard() {
         </div>
         <UserStatus inline />
       </section>
+
+      <BarraInferior active={active} onSelect={select} />
     </div>
   );
 }
