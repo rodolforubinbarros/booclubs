@@ -15,6 +15,7 @@ import {
   listarClubesDoUsuario,
   listarMembrosDoClube,
   listarUsuarios,
+  listarUsuariosLista,
   listarUsuariosPorBusca,
   obterConteudoSobre,
   obterPapel,
@@ -27,6 +28,7 @@ import {
   type ClubeLeitura,
   type ClubeVisivel,
   type Usuario,
+  type UsuarioLista,
   type UsuarioPerfil,
 } from "./db";
 
@@ -92,6 +94,33 @@ function serializarClube(clube: ClubeLeitura): ClubeLeituraDto {
 
 export async function obterUsuarios(): Promise<UsuarioDto[]> {
   return (await listarUsuarios()).map(serializarUsuario);
+}
+
+export type UsuarioListaDto = {
+  id: string;
+  name: string;
+  image: string | null;
+  bio: string | null;
+  temaFavorito: string | null;
+  autorFavorito: string | null;
+  livroIndicado: string | null;
+  criadoEm: string;
+  clubes: number;
+};
+
+export async function obterUsuariosLista(): Promise<UsuarioListaDto[]> {
+  if (!(await souAdministrador())) return [];
+  return (await listarUsuariosLista()).map((usuario: UsuarioLista) => ({
+    id: usuario.id,
+    name: usuario.name,
+    image: usuario.image,
+    bio: usuario.bio,
+    temaFavorito: usuario.temaFavorito,
+    autorFavorito: usuario.autorFavorito,
+    livroIndicado: usuario.livroIndicado,
+    criadoEm: usuario.criado_em.toISOString(),
+    clubes: usuario.clubes,
+  }));
 }
 
 export type UsuarioPerfilDto = {

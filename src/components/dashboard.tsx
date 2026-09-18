@@ -29,12 +29,14 @@ import {
   obterClubesDoUsuario,
   obterMembrosDoClube,
   obterSobre,
+  obterUsuariosLista,
   obterUsuariosPorBusca,
   sairDoClube,
   type AmigoDto,
   type ClubeDoUsuarioDto,
   type ClubeVisivelDto,
   type MembroDoClubeDto,
+  type UsuarioListaDto,
   type UsuarioPerfilDto,
 } from "@/server/actions";
 
@@ -44,6 +46,7 @@ type MenuKey =
   | "patota"
   | "clubes"
   | "cadastrar"
+  | "usuarios"
   | "sobre"
   | "editar-perfil";
 
@@ -56,6 +59,7 @@ const MENU_PRINCIPAL: { key: MenuKey; label: string }[] = [
 
 const MENU_CADASTRO: { key: MenuKey; label: string }[] = [
   { key: "cadastrar", label: "Cadastrar Clube de Leitura" },
+  { key: "usuarios", label: "Listar Usuários" },
 ];
 
 const MENU_INSTITUCIONAL: { key: MenuKey; label: string }[] = [
@@ -2431,11 +2435,91 @@ function ConteudoCadastro({ onCriado }: { onCriado?: () => void }) {
   );
 }
 
+function ConteudoUsuarios() {
+  const [usuarios, setUsuarios] = useState<UsuarioListaDto[] | null>(null);
+
+  useEffect(() => {
+    let ativo = true;
+    obterUsuariosLista()
+      .then((resultado) => {
+        if (ativo) setUsuarios(resultado);
+      })
+      .catch(() => {
+        if (ativo) setUsuarios([]);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-2xl font-bold tracking-tight">
+          Usuários Cadastrados
+        </h2>
+        <p className="text-sm text-black/60">
+          Todos os usuários registrados no BooClubs.
+        </p>
+      </div>
+
+      {usuarios === null ? (
+        <p className="text-sm text-black/50">Carregando usuários...</p>
+      ) : usuarios.length === 0 ? (
+        <p className="text-sm text-black/50">Nenhum usuário cadastrado.</p>
+      ) : (
+        <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {usuarios.map((usuario) => (
+            <li
+              key={usuario.id}
+              className="flex items-start gap-3 rounded-lg border border-black/10 bg-white p-3"
+            >
+              <ImagemUsuario
+                src={usuario.image}
+                alt={`Foto de ${usuario.name}`}
+                className="h-14 w-14 shrink-0 rounded-full object-cover"
+              />
+              <div className="flex min-w-0 flex-col gap-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold text-black">
+                    {usuario.name}
+                  </span>
+                  <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                    {usuario.clubes} clube(s)
+                  </span>
+                </div>
+                <p className="text-sm text-black/60">
+                  {usuario.bio?.trim() || "Sem bio."}
+                </p>
+                <div className="flex flex-col gap-0.5 text-xs text-black/50">
+                  {usuario.temaFavorito?.trim() && (
+                    <span>Tema: {usuario.temaFavorito}</span>
+                  )}
+                  {usuario.autorFavorito?.trim() && (
+                    <span>Autor(a): {usuario.autorFavorito}</span>
+                  )}
+                  {usuario.livroIndicado?.trim() && (
+                    <span>Indica: {usuario.livroIndicado}</span>
+                  )}
+                </div>
+                <span className="text-xs text-black/40">
+                  Membro desde {formatarData(usuario.criadoEm)}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 const CONTEUDO: Record<Exclude<MenuKey, "cadastrar" | "editar-perfil">, ReactNode> = {
   perfil: <ConteudoPerfil />,
   fantasmas: <ConteudoFantasmas />,
   patota: <ConteudoPatota />,
   clubes: <ConteudoClubes />,
+  usuarios: <ConteudoUsuarios />,
   sobre: <ConteudoSobre />,
 };
 

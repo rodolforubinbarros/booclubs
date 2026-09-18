@@ -93,6 +93,39 @@ export async function listarUsuariosPorBusca(
   `;
 }
 
+export type UsuarioLista = {
+  id: string;
+  name: string;
+  image: string | null;
+  bio: string | null;
+  temaFavorito: string | null;
+  autorFavorito: string | null;
+  livroIndicado: string | null;
+  criado_em: Date;
+  clubes: number;
+};
+
+export async function listarUsuariosLista(): Promise<UsuarioLista[]> {
+  return sql<UsuarioLista[]>`
+    SELECT
+      u.id,
+      u.name,
+      u.image,
+      u.bio,
+      u."temaFavorito",
+      u."autorFavorito",
+      u."livroIndicado",
+      u."createdAt" AS criado_em,
+      (
+        SELECT count(*)::int
+        FROM clube_membros m
+        WHERE m.user_id = u.id
+      ) AS clubes
+    FROM "user" u
+    ORDER BY u.name ASC
+  `;
+}
+
 export async function listarClubes(
   busca = "",
   userId: string | null = null,
