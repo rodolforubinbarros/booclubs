@@ -5,6 +5,47 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { signUp, useSession } from "@/lib/auth-client";
+import { OlhoFechadoIcon, OlhoIcon } from "@/components/icones";
+
+function PasswordInput({
+  id,
+  name,
+  autoComplete,
+  placeholder,
+}: {
+  id: string;
+  name: string;
+  autoComplete?: string;
+  placeholder?: string;
+}) {
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <div className="relative">
+      <input
+        id={id}
+        name={name}
+        type={visible ? "text" : "password"}
+        required
+        autoComplete={autoComplete}
+        placeholder={placeholder}
+        className="w-full rounded-md border border-black/15 px-3 py-2 pr-10 text-sm focus:border-blue-600 focus:outline-none"
+      />
+      <button
+        type="button"
+        onClick={() => setVisible((v) => !v)}
+        aria-label={visible ? "Ocultar senha" : "Mostrar senha"}
+        className="absolute inset-y-0 right-0 flex items-center px-3 text-black/40 transition-colors hover:text-black/70"
+      >
+        {visible ? (
+          <OlhoFechadoIcon className="h-5 w-5" />
+        ) : (
+          <OlhoIcon className="h-5 w-5" />
+        )}
+      </button>
+    </div>
+  );
+}
 
 export function CadastroForm() {
   const router = useRouter();
@@ -61,17 +102,19 @@ export function CadastroForm() {
   return (
     <div className="w-full max-w-sm rounded-2xl border border-black/10 bg-white p-8 shadow-sm">
       <div className="flex flex-col items-center gap-2">
-        <Image
-          src="/booclubs_logo.png"
-          alt="BooClubs"
-          width={1377}
-          height={1438}
-          className="h-16 w-auto"
-          priority
-        />
-        <h1 className="text-3xl font-bold tracking-tight text-blue-600">
-          BooClubs
-        </h1>
+        <Link href="/" className="flex flex-col items-center gap-2" aria-label="Ir para a página inicial">
+          <Image
+            src="/booclubs_logo.png"
+            alt="BooClubs"
+            width={1377}
+            height={1438}
+            className="h-16 w-auto"
+            priority
+          />
+          <h1 className="text-3xl font-bold tracking-tight text-blue-600">
+            BooClubs
+          </h1>
+        </Link>
       </div>
 
       <form className="mt-6 flex flex-col gap-4" onSubmit={onSubmit}>
@@ -109,14 +152,11 @@ export function CadastroForm() {
           <label htmlFor="password" className="text-sm font-medium">
             Senha
           </label>
-          <input
+          <PasswordInput
             id="password"
             name="password"
-            type="password"
-            required
             autoComplete="new-password"
             placeholder="Mínimo 8 caracteres"
-            className="w-full rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
           />
         </div>
 
@@ -124,14 +164,11 @@ export function CadastroForm() {
           <label htmlFor="confirmPassword" className="text-sm font-medium">
             Confirmar senha
           </label>
-          <input
+          <PasswordInput
             id="confirmPassword"
             name="confirmPassword"
-            type="password"
-            required
             autoComplete="new-password"
             placeholder="Repita a senha"
-            className="w-full rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
           />
         </div>
 

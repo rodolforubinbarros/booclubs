@@ -48,17 +48,19 @@ export function LoginForm() {
   return (
     <div className="w-full max-w-sm rounded-2xl border border-black/10 bg-white p-8 shadow-sm">
       <div className="flex flex-col items-center gap-2">
-        <Image
-          src="/booclubs_logo.png"
-          alt="BooClubs"
-          width={1377}
-          height={1438}
-          className="h-16 w-auto"
-          priority
-        />
-        <h1 className="text-3xl font-bold tracking-tight text-blue-600">
-          BooClubs
-        </h1>
+        <Link href="/" className="flex flex-col items-center gap-2" aria-label="Ir para a página inicial">
+          <Image
+            src="/booclubs_logo.png"
+            alt="BooClubs"
+            width={1377}
+            height={1438}
+            className="h-16 w-auto"
+            priority
+          />
+          <h1 className="text-3xl font-bold tracking-tight text-blue-600">
+            BooClubs
+          </h1>
+        </Link>
       </div>
 
       <form className="mt-6 flex flex-col gap-4" onSubmit={onSubmit}>

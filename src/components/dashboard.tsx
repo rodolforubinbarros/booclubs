@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { authClient, signOut, useSession } from "@/lib/auth-client";
 import { useAdministrador } from "@/lib/use-admin";
 import { UserStatus } from "@/components/user-status";
@@ -79,6 +80,10 @@ function ConteudoPerfil({ onEditar }: { onEditar?: () => void }) {
   const [clubes, setClubes] = useState<ClubeDoUsuarioDto[]>([]);
   const [carregandoClubes, setCarregandoClubes] = useState(true);
   const [saindoId, setSaindoId] = useState<string | null>(null);
+  const [clubeParaSair, setClubeParaSair] = useState<{
+    id: string;
+    nome: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!userId) return;
@@ -102,6 +107,7 @@ function ConteudoPerfil({ onEditar }: { onEditar?: () => void }) {
   }, [userId]);
 
   async function sair(id: string) {
+    setClubeParaSair(null);
     setSaindoId(id);
     try {
       const resultado = await sairDoClube(id);
@@ -217,7 +223,9 @@ function ConteudoPerfil({ onEditar }: { onEditar?: () => void }) {
                       <button
                         type="button"
                         disabled={saindoId === clube.id}
-                        onClick={() => sair(clube.id)}
+                        onClick={() =>
+                          setClubeParaSair({ id: clube.id, nome: clube.nome })
+                        }
                         title="Sair do clube"
                         aria-label={`Sair do clube ${clube.nome}`}
                         className="flex h-6 w-6 items-center justify-center rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
@@ -262,6 +270,16 @@ function ConteudoPerfil({ onEditar }: { onEditar?: () => void }) {
           </ul>
         )}
       </div>
+
+      <ModalConfirmacao
+        aberto={clubeParaSair !== null}
+        perigo
+        titulo="Sair do clube"
+        mensagem={`Você tem certeza que deseja deixar o clube "${clubeParaSair?.nome}"?`}
+        confirmando={clubeParaSair !== null && saindoId === clubeParaSair.id}
+        onConfirmar={() => clubeParaSair && sair(clubeParaSair.id)}
+        onCancelar={() => setClubeParaSair(null)}
+      />
     </div>
   );
 }
@@ -280,6 +298,10 @@ function ConteudoClubes() {
   const [erroEntrada, setErroEntrada] = useState(false);
   const [excluindoId, setExcluindoId] = useState<string | null>(null);
   const [erroExclusao, setErroExclusao] = useState(false);
+  const [clubeParaExcluir, setClubeParaExcluir] =
+    useState<ClubeVisivelDto | null>(null);
+  const [clubeParaEntrar, setClubeParaEntrar] =
+    useState<ClubeVisivelDto | null>(null);
 
   useEffect(() => {
     const temporizador = setTimeout(() => setBuscaDiferida(busca), 400);
@@ -301,6 +323,7 @@ function ConteudoClubes() {
   }, [buscaDiferida, atualizacao]);
 
   async function entrar(clube: ClubeVisivelDto) {
+    setClubeParaEntrar(null);
     setEntrandoId(clube.id);
     setErroEntrada(false);
     try {
@@ -340,9 +363,7 @@ function ConteudoClubes() {
   }
 
   async function excluir(clube: ClubeVisivelDto) {
-    if (!window.confirm(`Excluir o clube "${clube.nome}"? Essa ação não pode ser desfeita.`)) {
-      return;
-    }
+    setClubeParaExcluir(null);
     setExcluindoId(clube.id);
     setErroExclusao(false);
     try {
@@ -429,7 +450,7 @@ function ConteudoClubes() {
                     <button
                       type="button"
                       disabled={entrandoId === clube.id}
-                      onClick={() => entrar(clube)}
+                      onClick={() => setClubeParaEntrar(clube)}
                       title="Participar deste clube"
                       className="flex h-7 w-7 items-center justify-center rounded-full border border-blue-200 text-lg font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
                     >
@@ -466,7 +487,7 @@ function ConteudoClubes() {
                       <button
                         type="button"
                         disabled={excluindoId === clube.id}
-                        onClick={() => excluir(clube)}
+                        onClick={() => setClubeParaExcluir(clube)}
                         aria-label={`Excluir o clube ${clube.nome}`}
                         className="flex h-7 w-7 items-center justify-center rounded-full border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50"
                       >
@@ -599,6 +620,87 @@ function ConteudoClubes() {
           </div>
         </div>
       )}
+      <ModalConfirmacao
+        aberto={clubeParaEntrar !== null}
+        titulo="Participar do clube"
+        mensagem={`Você tem certeza que deseja participar do clube "${clubeParaEntrar?.nome}"?`}
+        confirmando={
+          clubeParaEntrar !== null && entrandoId === clubeParaEntrar.id
+        }
+        rotuloConfirmar="Sim, participar"
+        onConfirmar={() => clubeParaEntrar && entrar(clubeParaEntrar)}
+        onCancelar={() => setClubeParaEntrar(null)}
+      />
+      <ModalConfirmacao
+        aberto={clubeParaExcluir !== null}
+        perigo
+        titulo="Excluir clube"
+        mensagem={`Você tem certeza que deseja excluir o clube "${clubeParaExcluir?.nome}"? Essa ação não pode ser desfeita.`}
+        confirmando={
+          clubeParaExcluir !== null && excluindoId === clubeParaExcluir.id
+        }
+        rotuloConfirmar="Sim, excluir"
+        onConfirmar={() => clubeParaExcluir && excluir(clubeParaExcluir)}
+        onCancelar={() => setClubeParaExcluir(null)}
+      />
+    </div>
+  );
+}
+
+function ModalConfirmacao({
+  aberto,
+  titulo,
+  mensagem,
+  confirmando = false,
+  onConfirmar,
+  onCancelar,
+  rotuloConfirmar = "Sim",
+  rotuloCancelar = "Não",
+  perigo = false,
+}: {
+  aberto: boolean;
+  titulo: string;
+  mensagem: ReactNode;
+  confirmando?: boolean;
+  onConfirmar: () => void;
+  onCancelar: () => void;
+  rotuloConfirmar?: string;
+  rotuloCancelar?: string;
+  perigo?: boolean;
+}) {
+  if (!aberto) return null;
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={titulo}
+    >
+      <div className="absolute inset-0 bg-black/40" onClick={onCancelar} />
+      <div className="relative flex max-h-full w-full max-w-sm flex-col rounded-2xl bg-white p-6 shadow-xl">
+        <h3 className="text-lg font-semibold text-black">{titulo}</h3>
+        <p className="mt-2 text-sm text-black/60">{mensagem}</p>
+        <div className="mt-6 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            disabled={confirmando}
+            onClick={onCancelar}
+            className="rounded-md border border-black/15 px-4 py-2 text-sm font-medium text-black hover:bg-blue-50 disabled:opacity-50"
+          >
+            {rotuloCancelar}
+          </button>
+          <button
+            type="button"
+            disabled={confirmando}
+            onClick={onConfirmar}
+            className={`rounded-md px-4 py-2 text-sm font-medium text-white disabled:opacity-50 ${
+              perigo ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700"
+            }`}
+          >
+            {confirmando ? "Aguarde..." : rotuloConfirmar}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -701,6 +803,8 @@ function ConteudoFantasminhas() {
   const [adicionandoId, setAdicionandoId] = useState<string | null>(null);
   const [erroAmizade, setErroAmizade] = useState(false);
   const [idsAmigos, setIdsAmigos] = useState<Set<string> | null>(null);
+  const [usuarioParaAdicionar, setUsuarioParaAdicionar] =
+    useState<UsuarioPerfilDto | null>(null);
 
   useEffect(() => {
     const temporizador = setTimeout(() => setBuscaDiferida(busca), 400);
@@ -748,6 +852,7 @@ function ConteudoFantasminhas() {
 
   async function adicionar(id: string) {
     if (!sessaoUserId || sessaoUserId === id) return;
+    setUsuarioParaAdicionar(null);
     setAdicionandoId(id);
     setErroAmizade(false);
     try {
@@ -799,7 +904,7 @@ function ConteudoFantasminhas() {
                 <button
                   type="button"
                   disabled={adicionandoId === usuario.id}
-                  onClick={() => adicionar(usuario.id)}
+                  onClick={() => setUsuarioParaAdicionar(usuario)}
                   title={
                     idsAmigos?.has(usuario.id)
                       ? "Já faz parte da sua patota"
@@ -895,7 +1000,7 @@ function ConteudoFantasminhas() {
                   <button
                     type="button"
                     disabled={adicionandoId === usuarioAberto.id}
-                    onClick={() => adicionar(usuarioAberto.id)}
+                    onClick={() => setUsuarioParaAdicionar(usuarioAberto)}
                     className="flex w-fit items-center gap-1.5 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                   >
                     {adicionandoId === usuarioAberto.id ? (
@@ -925,6 +1030,19 @@ function ConteudoFantasminhas() {
           }
         />
       )}
+
+      <ModalConfirmacao
+        aberto={usuarioParaAdicionar !== null}
+        titulo="Adicionar à patota"
+        mensagem={`Você tem certeza que deseja adicionar ${usuarioParaAdicionar?.name} à sua patota?`}
+        confirmando={
+          usuarioParaAdicionar !== null &&
+          adicionandoId === usuarioParaAdicionar.id
+        }
+        rotuloConfirmar="Sim, adicionar"
+        onConfirmar={() => usuarioParaAdicionar && adicionar(usuarioParaAdicionar.id)}
+        onCancelar={() => setUsuarioParaAdicionar(null)}
+      />
     </div>
   );
 }
@@ -934,6 +1052,10 @@ function ConteudoPatota() {
   const [removendoId, setRemovendoId] = useState<string | null>(null);
   const [erro, setErro] = useState(false);
   const [amigoAberto, setAmigoAberto] = useState<AmigoDto | null>(null);
+  const [amigoParaRemover, setAmigoParaRemover] = useState<{
+    id: string;
+    nome: string;
+  } | null>(null);
 
   useEffect(() => {
     let ativo = true;
@@ -950,6 +1072,7 @@ function ConteudoPatota() {
   }, []);
 
   async function desfazer(amigoId: string) {
+    setAmigoParaRemover(null);
     setRemovendoId(amigoId);
     setErro(false);
     try {
@@ -1012,7 +1135,9 @@ function ConteudoPatota() {
               <button
                 type="button"
                 disabled={removendoId === amigo.id}
-                onClick={() => desfazer(amigo.id)}
+                onClick={() =>
+                  setAmigoParaRemover({ id: amigo.id, nome: amigo.nome })
+                }
                 title="Desfazer amizade"
                 aria-label={`Desfazer amizade com ${amigo.nome}`}
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50"
@@ -1088,7 +1213,12 @@ function ConteudoPatota() {
                 <button
                   type="button"
                   disabled={removendoId === perfilAberto.id}
-                  onClick={() => desfazer(perfilAberto.id)}
+                  onClick={() =>
+                    setAmigoParaRemover({
+                      id: perfilAberto.id,
+                      nome: perfilAberto.name,
+                    })
+                  }
                   className="flex w-fit items-center gap-1.5 rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
                 >
                   {removendoId === perfilAberto.id ? (
@@ -1113,6 +1243,21 @@ function ConteudoPatota() {
           }
         />
       )}
+
+      <ModalConfirmacao
+        aberto={amigoParaRemover !== null}
+        perigo
+        titulo="Desfazer amizade"
+        mensagem={`Você tem certeza que deseja desfazer a amizade com ${amigoParaRemover?.nome}?`}
+        confirmando={
+          amigoParaRemover !== null && removendoId === amigoParaRemover.id
+        }
+        rotuloConfirmar="Sim, desfazer"
+        onConfirmar={() =>
+          amigoParaRemover && desfazer(amigoParaRemover.id)
+        }
+        onCancelar={() => setAmigoParaRemover(null)}
+      />
     </div>
   );
 }
@@ -1134,6 +1279,7 @@ function ConteudoEditarPerfil({ onVoltar }: { onVoltar?: () => void }) {
   );
   const [erro, setErro] = useState("");
   const [usuarioSincronizado, setUsuarioSincronizado] = useState(user);
+  const [confirmarSalvar, setConfirmarSalvar] = useState(false);
 
   if (user !== usuarioSincronizado) {
     setUsuarioSincronizado(user);
@@ -1152,11 +1298,17 @@ function ConteudoEditarPerfil({ onVoltar }: { onVoltar?: () => void }) {
       setEstado("erro");
       return;
     }
+    setErro("");
+    setConfirmarSalvar(true);
+  }
+
+  async function salvarConfirmado() {
+    setConfirmarSalvar(false);
     setEstado("enviando");
     setErro("");
     try {
       const { error } = await authClient.updateUser({
-        name: novoNome,
+        name: nome.trim(),
         bio: bio.trim(),
         temaFavorito: temaFavorito.trim(),
         autorFavorito: autorFavorito.trim(),
@@ -1262,11 +1414,15 @@ function ConteudoEditarPerfil({ onVoltar }: { onVoltar?: () => void }) {
             id="bio"
             name="bio"
             rows={3}
+            maxLength={500}
             value={bio}
             onChange={(event) => setBio(event.target.value)}
             placeholder="Conte um pouco sobre voce..."
             className="rounded-md border border-black/15 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
           />
+          <p className="text-xs text-black/50">
+            Até 500 caracteres ({bio.length}/500)
+          </p>
         </div>
 
         <div className="flex flex-col gap-1">
@@ -1344,6 +1500,16 @@ function ConteudoEditarPerfil({ onVoltar }: { onVoltar?: () => void }) {
           )}
         </div>
       </form>
+
+      <ModalConfirmacao
+        aberto={confirmarSalvar}
+        titulo="Salvar alterações"
+        mensagem="Você tem certeza que deseja salvar as alterações no seu perfil?"
+        confirmando={estado === "enviando"}
+        rotuloConfirmar="Sim, salvar"
+        onConfirmar={salvarConfirmado}
+        onCancelar={() => setConfirmarSalvar(false)}
+      />
     </div>
   );
 }
@@ -1362,13 +1528,21 @@ function ConteudoCadastro({ onCriado }: { onCriado?: () => void }) {
     "idle" | "enviando" | "feito" | "erro"
   >("idle");
   const [erro, setErro] = useState("");
+  const [formAguardandoConfirmacao, setFormAguardandoConfirmacao] =
+    useState<FormData | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = event.currentTarget;
+    setErro("");
+    setFormAguardandoConfirmacao(new FormData(event.currentTarget));
+  }
+
+  async function confirmarCriacao() {
+    if (!formAguardandoConfirmacao) return;
+    const formData = formAguardandoConfirmacao;
+    setFormAguardandoConfirmacao(null);
     setEstado("enviando");
     setErro("");
-    const formData = new FormData(form);
     try {
       const resultado = await criarClube({
         nome: String(formData.get("nome") ?? "").trim(),
@@ -1381,7 +1555,6 @@ function ConteudoCadastro({ onCriado }: { onCriado?: () => void }) {
         setErro(resultado.erro);
         setEstado("erro");
       } else {
-        form.reset();
         setEstado("feito");
         onCriado?.();
       }
@@ -1489,6 +1662,16 @@ function ConteudoCadastro({ onCriado }: { onCriado?: () => void }) {
           {estado === "enviando" ? "Criando..." : "Cadastrar"}
         </button>
       </form>
+
+      <ModalConfirmacao
+        aberto={formAguardandoConfirmacao !== null}
+        titulo="Cadastrar Clube de Leitura"
+        mensagem={`Você tem certeza que deseja criar o clube "${String(formAguardandoConfirmacao?.get("nome") ?? "").trim() || "—"}"?`}
+        confirmando={estado === "enviando"}
+        rotuloConfirmar="Sim, criar"
+        onConfirmar={confirmarCriacao}
+        onCancelar={() => setFormAguardandoConfirmacao(null)}
+      />
     </div>
   );
 }
@@ -1544,17 +1727,24 @@ function Sidebar({
   return (
     <>
       <div className="flex items-center justify-center gap-2 px-2 pb-6">
-        <Image
-          src="/booclubs_logo.png"
-          alt="BooClubs"
-          width={1377}
-          height={1438}
-          className="h-10 w-auto"
-          priority
-        />
-        <span className="text-xl font-bold tracking-tight text-blue-600">
-          BooClubs
-        </span>
+        <Link
+          href="/"
+          onClick={() => onSelect("perfil")}
+          className="flex items-center gap-2"
+          aria-label="Ir para a página inicial"
+        >
+          <Image
+            src="/booclubs_logo.png"
+            alt="BooClubs"
+            width={1377}
+            height={1438}
+            className="h-10 w-auto"
+            priority
+          />
+          <span className="text-xl font-bold tracking-tight text-blue-600">
+            BooClubs
+          </span>
+        </Link>
       </div>
 
       <nav className="flex flex-1 flex-col gap-1">
@@ -1624,17 +1814,24 @@ export function Dashboard() {
     <div className="flex min-h-0 flex-1 flex-col md:flex-row">
       <header className="flex items-center justify-between border-b border-black/10 bg-white px-4 py-3 md:hidden">
         <div className="flex items-center gap-2">
-          <Image
-            src="/booclubs_logo.png"
-            alt="BooClubs"
-            width={1377}
-            height={1438}
-            className="h-8 w-auto"
-            priority
-          />
-          <span className="text-lg font-bold tracking-tight text-blue-600">
-            BooClubs
-          </span>
+          <Link
+            href="/"
+            onClick={() => select("perfil")}
+            className="flex items-center gap-2"
+            aria-label="Ir para a página inicial"
+          >
+            <Image
+              src="/booclubs_logo.png"
+              alt="BooClubs"
+              width={1377}
+              height={1438}
+              className="h-8 w-auto"
+              priority
+            />
+            <span className="text-lg font-bold tracking-tight text-blue-600">
+              BooClubs
+            </span>
+          </Link>
         </div>
         <button
           type="button"
